@@ -1,4 +1,5 @@
 from .update_sensors import SoilScoutUpdater
+from .simulation import copy_simulation
 
 import pymongo
 from bson import json_util
@@ -24,7 +25,7 @@ class TwinDataBase(object):
         for zone in fld["zones"]:
             fcol["features"].append({
                 'id': zone['name'],
-                'geometry': fld["geometry"],
+                'geometry': zone["geometry"],
                 'properties': {'field_name': fld['name'], 'zone': zone['name'], 'rate': zone['rates'][0]}
             })
         zone_df = gpd.GeoDataFrame.from_features(fcol, crs="EPSG:4326")

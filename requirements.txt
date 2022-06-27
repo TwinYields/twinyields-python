@@ -1,6 +1,6 @@
 xmltodict==0.12.0
 pandas
-geopandas
+geopandas== 0.11.0
 fiona
 numpy
 requests
@@ -9,3 +9,4 @@ sat-search
 rasterio
 tomli
 xarray
+sqlalchemy
