@@ -1,0 +1,12 @@
+xmltodict==0.12.0
+pandas
+geopandas== 0.11.0
+fiona
+numpy
+requests
+pymongo
+sat-search
+rasterio
+tomli
+xarray
+sqlalchemy

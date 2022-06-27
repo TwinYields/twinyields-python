@@ -1,4 +1,4 @@
-import toml
+import tomli
 from pathlib import Path
 
 class Config(object):
@@ -7,7 +7,7 @@ class Config(object):
 
     def __init__(self):
         cfg_file = Path.home() / ".twinyields/config.toml"
-        self._config = toml.load(cfg_file)
+        self._config = tomli.load(open(cfg_file, "rb"))
 
     @property
     def userconfig(self):
