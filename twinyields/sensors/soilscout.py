@@ -11,8 +11,8 @@ class SoilScoutAPI(object):
     def __init__(self, user=None, password=None):
         self.session = requests.Session()
         if user is None:
-            self.user = Config().userconfig["SoilScout"]["user"]
-            self.password = Config().userconfig["SoilScout"]["password"]
+            self.user = Config.SoilScout.user
+            self.password = Config.SoilScout.password
         else:
             self.user = user
             self.password = password
