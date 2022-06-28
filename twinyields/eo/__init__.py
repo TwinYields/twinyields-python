@@ -56,7 +56,9 @@ class Sentinel2(object):
             ds["LAI"] = t.lai
             ds["FAPAR"] = t.fapar
             ds["NDVI"] = t.ndvi
-            ds.rio.to_raster(fname)
+            ds.rio.to_raster(fname, tags = {"time": np.datetime_as_string(t.time, unit="s"),
+                                            "field": t.name
+                                            })
             fnames.append(fname)
         return fnames
 
