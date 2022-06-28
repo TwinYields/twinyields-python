@@ -2,6 +2,7 @@ from .database import TwinDataBase
 from ..eo import Sentinel2
 from .. import Config
 import datetime
+import os
 from pathlib import Path
 
 class EOUpdater(object):
@@ -26,5 +27,12 @@ class EOUpdater(object):
         if ret:
             #s2.get_zones(zones)
             s2_table = s2.zone_indices()
-            s2.to_rasters(Path(Config.Simulation.path) / "rasters/sentinel2")
             self.db.save_dataframe(s2_table, self.name)
+            rasters = s2.to_rasters(os.path.join(Config.Simulation.path, "rasters/sentinel2"))
+            print("Writing rasters to MongoDB")
+            for rfile in rasters:
+                self.db.save_raster(rfile, "Sentinel2Rasters")
+            print("Done")
+
+
+

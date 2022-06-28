@@ -1,6 +1,29 @@
 
 # TwinYields Python library
 
-## Current features
+## Configuration
 
-- Connect to SoilScout api and copy most recent data to MongoDB
+Configuration is read from file: `~./twinyields/config.toml`. See template: `config/config.toml` 
+
+## Usage
+
+### Update data in MongoDB
+
+#### Sentinel2 
+
+```python
+from twinyields.database import EOUpdater
+eoup = EOUpdater()
+eoup.update_field("RVIII")
+```
+
+#### SoilScouts
+
+```python
+from twinyields.database import SoilScoutUpdater
+scu = SoilScoutUpdater()
+scu.update()
+```
+
+
+

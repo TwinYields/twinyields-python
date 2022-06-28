@@ -1,8 +1,13 @@
 import pandas as pd
 import pymongo
+import rioxarray
 from bson import json_util
 import geopandas as gpd
 import pandas as pd
+import rasterio
+import datetime
+import tempfile
+
 
 class TwinDataBase(object):
 
@@ -40,8 +45,13 @@ class TwinDataBase(object):
         data = col.find(filter)
         return pd.DataFrame.from_records(data, exclude=["_id"])
 
-    def get_simulation(self, filter={}):
-        col = self.db.get_collection("Simulation")
+    def get_simfiles(self):
+        col = self.db.get_collection("SimulationFiles")
+        data = col.find()
+        return pd.DataFrame.from_records(data, exclude=["_id"])
+
+    def get_simulation_data(self, filter={}):
+        col = self.db.get_collection("SimulationData")
         data = col.find(filter)
         return pd.DataFrame.from_records(data, exclude=["_id"])
 
@@ -51,4 +61,56 @@ class TwinDataBase(object):
             self.db.drop_collection(col_name)
         col = self.get_collection(col_name)
         col.insert_many(data_dict)
+
+    """Save raster file to database"""
+    def save_raster(self, rfile, col_name):
+        data = open(rfile, "rb").read()
+        r = rasterio.open(rfile)
+        tags = r.tags()
+        doc = {"raster": data, "field" : tags["field"],
+            "time": datetime.datetime.strptime(tags["time"], "%Y-%m-%dT%H:%M:%S"),
+            "path": rfile
+        }
+        col = self.db.get_collection(col_name)
+        col.insert_one(doc)
+
+    """Get Sentinel2 rasters for a field, use limit=1 to get only most recent
+    """
+    def get_s2_raster(self, field, limit=100):
+        col = self.db.get_collection("Sentinel2Rasters")
+        docs = col.find({"field": field}).sort("time", -1).limit(limit)
+        rasters = []
+        #There seem to be some issues with MemoryFile (occasional crashes) at least on Windows
+        for doc in docs:
+            with rasterio.MemoryFile(doc["raster"]) as raster:
+                with raster.open() as r:
+                    ds = rioxarray.open_rasterio(r, cache=True)
+                    ds["time"] = doc["time"]
+                    rasters.append(ds.copy(deep=True))
+        return rasters
+
+
+    """Get specific Sentinel2 bands for a field, use limit=1 to get only most recent"""
+    def get_s2_band(self, field, band, limit=100):
+        col = self.db.get_collection("Sentinel2Rasters")
+        docs = col.find({"field": field}).sort("time", -1).limit(limit)
+        bounds = []
+        rasters = []
+        times = []
+        for doc in docs:
+            rfile = rasterio.MemoryFile(doc["raster"])
+            r = rfile.open()
+            idx = r.indexes[r.descriptions.index(band)]
+            rasters.append(r.read(idx))
+            bounds.append(r.bounds)
+            times.append(doc["time"])
+            r.close()
+        return rasters, bounds, times
+
+
+
+
+
+
+
 

@@ -7,7 +7,7 @@ import datetime
 @dataclass
 class Simulation:
     start_date: str = f"{datetime.datetime.now().year}-05-01"
-    path: Path = Path.home() / "twinyields/digitaltwin/"
+    path: str = Path.home().as_posix() + "/twinyields/digitaltwin/"
 
 @dataclass
 class SoilScout:
@@ -27,10 +27,8 @@ class Config(object):
         Config.config = cfg
         if "Simulation" in cfg:
             Config.Simulation = Simulation(**cfg["Simulation"])
-            Config.Simulation.path = Path(Config.Simulation.path) # Ensure Path type
         if "SoilScout" in cfg:
             Config.SoilScout = SoilScout(**cfg["SoilScout"])
-
 
 
 _cfg = Config()
