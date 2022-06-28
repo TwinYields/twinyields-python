@@ -4,6 +4,7 @@
 # commit 8bb622a50744745c5a6a08c544e1f884e2f30e22
 # License MIT
 # the copied version was not installable via pip
+import os.path
 
 from . import biophys
 from .common.classes import AOI, RequestParams
@@ -11,6 +12,9 @@ from .common.sentinel2 import S2_BANDS_10_20_COG
 from .common.wrappers import get_s2_qi_and_data
 import rioxarray
 import pandas as pd
+import xarray
+import re
+import numpy as np
 
 class Sentinel2(object):
 
@@ -29,10 +33,32 @@ class Sentinel2(object):
             target_gsd=10.0)
         aoi.qi, aoi.data = get_s2_qi_and_data(aoi, request, qi_threshold=qi_threshold)
         self.data = aoi.data
-        self.compute_indices()
-        self.data = self.data.rio.write_crs(self.data.crs)
-        if zones is not None:
-            self.get_zones()
+        if self.data is not None:
+            self.compute_indices()
+            self.data = self.data.rio.write_crs(self.data.crs)
+            if zones is not None:
+                self.get_zones(zones)
+            return True
+        else:
+            return False
+
+    def to_rasters(self, path=""):
+        os.makedirs(path, exist_ok=True)
+        N = len(self.data.time)
+        fnames = []
+        for tidx in range(N):
+            t = self.data.isel(time=tidx)
+            stime = re.sub(r":|-", "", np.datetime_as_string(t.time, unit="m"))
+            fname = os.path.join(path, f"{t.name}_{stime}.tiff")
+            ds = xarray.Dataset()
+            for idx, band in enumerate(t.band.values):
+                ds[band] = t.isel(band=idx).band_data
+            ds["LAI"] = t.lai
+            ds["FAPAR"] = t.fapar
+            ds["NDVI"] = t.ndvi
+            ds.rio.to_raster(fname)
+            fnames.append(fname)
+        return fnames
 
     def get_zones(self, zones):
         zones = zones.to_crs(self.data.rio.crs)

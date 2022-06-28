@@ -1,15 +1,36 @@
 import tomli
 from pathlib import Path
+import dataclasses
+from dataclasses import dataclass
+import datetime
+
+@dataclass
+class Simulation:
+    start_date: str = f"{datetime.datetime.now().year}-05-01"
+    path: Path = Path.home() / "twinyields/digitaltwin/"
+
+@dataclass
+class SoilScout:
+    user: str = None
+    password: str = None
+    devices: list = dataclasses.field(default_factory=list)
 
 class Config(object):
-
     database = "TwinYields"
+    config = {}
+    Simulation = Simulation()
+    SoilScout = SoilScout()
 
     def __init__(self):
         cfg_file = Path.home() / ".twinyields/config.toml"
-        self._config = tomli.load(open(cfg_file, "rb"))
+        cfg = tomli.load(open(cfg_file, "rb"))
+        Config.config = cfg
+        if "Simulation" in cfg:
+            Config.Simulation = Simulation(**cfg["Simulation"])
+            Config.Simulation.path = Path(Config.Simulation.path) # Ensure Path type
+        if "SoilScout" in cfg:
+            Config.SoilScout = SoilScout(**cfg["SoilScout"])
 
-    @property
-    def userconfig(self):
-        return self._config
 
+
+_cfg = Config()

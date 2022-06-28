@@ -11,7 +11,7 @@ class SoilScoutUpdater(object):
         db = client.get_database(Config.database)
         self.collection = db.get_collection("SoilScout")
         if devices is None:
-            self.devices = Config().userconfig["SoilScout"]["devices"]
+            self.devices = Config.SoilScout.devices
         else:
             self.devices = devices
 

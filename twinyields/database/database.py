@@ -2,6 +2,7 @@ import pymongo
 from bson import json_util
 import geopandas as gpd
 
+
 class TwinDataBase(object):
 
     def __init__(self):
@@ -11,9 +12,9 @@ class TwinDataBase(object):
     def get_collection(self, col):
         return self.db.get_collection(col)
 
-    def get_field(self, filter={}):
+    def get_field(self, field=None):
         col = self.db.get_collection("Fields")
-        fld = col.find_one(filter)
+        fld = col.find_one({"name": field})
         features = [{
             'geometry': fld["geometry"],
             'properties': {'name': fld['name']}
@@ -29,6 +30,9 @@ class TwinDataBase(object):
             })
         zone_df = gpd.GeoDataFrame.from_features(fcol, crs="EPSG:4326")
         return field_df, zone_df
+
+    def get_s2(self):
+        col = self.db.get_collection("Sentinel2")
 
     def save_dataframe(self, df, col_name, drop=False):
         data_dict = df.to_dict(orient="records")
