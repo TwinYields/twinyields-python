@@ -3,6 +3,11 @@ from ..sensors import SoilScoutAPI
 from .. import Config
 import datetime
 import time
+from .database import TwinDataBase
+try:
+    from farmiaisti import Farmiaisti
+except:
+    print("Install private library farmiaisti to access Farmiaisti weather station data")
 
 class SoilScoutUpdater(object):
 
@@ -54,6 +59,35 @@ class SoilScoutUpdater(object):
             return (now-until_time).total_seconds()
         else:
             return 0
+
+class FarmiaistiUpdater(object):
+
+    def __init__(self):
+        self.db = TwinDataBase()
+        self.collection = self.db.get_collection("Farmiaisti")
+
+    def update(self):
+        for device in Config.Farmiaisti.devices:
+            print(f"Updating Farmiaisti device: {device}")
+            self.update_device(device)
+
+    def update_device(self, device):
+        fa = Farmiaisti(user=Config.Farmiaisti.user, password=Config.Farmiaisti.password)
+        last = list(self.collection.find({"device": device}).sort("time", -1).limit(1))
+        if not last:
+            since_time = datetime.datetime(2020, 1, 1)
+            print("No data, starting from", since_time)
+        else:
+            since_time = last[0]["time"] + datetime.timedelta(minutes=5) #Measurement done every 15 minutes
+        now = datetime.datetime.now()
+        df = fa.get_measurements(since_time, now, device)
+        if not df.empty:
+            print(df.time.max())
+            self.db.save_dataframe(df, "Farmiaisti")
+            N = df.shape[0]
+            print(f"Wrote {N} new measurements to database")
+        else:
+            print("Nothing to update")
 
 
 

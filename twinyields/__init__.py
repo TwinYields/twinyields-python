@@ -15,11 +15,18 @@ class SoilScout:
     password: str = None
     devices: list = dataclasses.field(default_factory=list)
 
+@dataclass
+class Farmiaisti:
+    user: str = None
+    password: str = None
+    devices: list = dataclasses.field(default_factory=list)
+
 class Config(object):
     database = "TwinYields"
     config = {}
     Simulation = Simulation()
     SoilScout = SoilScout()
+    Farmiaisti = Farmiaisti()
 
     def __init__(self):
         cfg_file = Path.home() / ".twinyields/config.toml"
@@ -29,6 +36,7 @@ class Config(object):
             Config.Simulation = Simulation(**cfg["Simulation"])
         if "SoilScout" in cfg:
             Config.SoilScout = SoilScout(**cfg["SoilScout"])
-
+        if "Farmiaisti" in cfg:
+            Config.Farmiaisti = Farmiaisti(**cfg["Farmiaisti"])
 
 _cfg = Config()

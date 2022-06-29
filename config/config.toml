@@ -6,3 +6,8 @@ start_date="2022-05-15"
 user=""
 password=""
 devices = []
+
+[Farmiaisti]
+user=""
+password=""
+devices = []

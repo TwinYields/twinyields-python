@@ -25,5 +25,14 @@ scu = SoilScoutUpdater()
 scu.update()
 ```
 
+#### Farmiaisti
+
+Requires installing private `farmiaisti` package.
+
+```python
+from twinyields.database import FarmiaistiUpdater
+fu = FarmiaistiUpdater()
+fu.update()
+```
 
 
