@@ -7,7 +7,7 @@ import pandas as pd
 import rasterio
 import datetime
 import tempfile
-
+from . import apsim
 
 class TwinDataBase(object):
 
@@ -54,6 +54,17 @@ class TwinDataBase(object):
         col = self.db.get_collection("SimulationData")
         data = col.find(filter)
         return pd.DataFrame.from_records(data, exclude=["_id"])
+
+    def get_farmiaisti(self, device):
+        col = self.db.get_collection("Farmiaisti")
+        data = col.find({"device": device})
+        return pd.DataFrame.from_records(data, exclude=["_id"])
+
+    def get_metfile(self, weatherfile, device):
+        data = self.get_farmiaisti(device)
+        info = self.db["FarmiaistiStations"].find_one({"description": device})
+        apsim.farmiaisti_to_met(data, weatherfile, device, info["location"])
+        print(f"Weather data written to {weatherfile}")
 
     def save_dataframe(self, df, col_name, drop=False):
         data_dict = df.to_dict(orient="records")
@@ -106,6 +117,8 @@ class TwinDataBase(object):
             times.append(doc["time"])
             r.close()
         return rasters, bounds, times
+
+
 
 
 

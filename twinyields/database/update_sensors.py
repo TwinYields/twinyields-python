@@ -89,6 +89,12 @@ class FarmiaistiUpdater(object):
         else:
             print("Nothing to update")
 
+    def update_description(self, device):
+        fa = Farmiaisti(user=Config.Farmiaisti.user, password=Config.Farmiaisti.password)
+        info = fa.get_deviceinfo(device)
+        col = self.db.get_collection("FarmiaistiStations")
+        col.insert_one(info)
+
 
 
 
