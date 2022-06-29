@@ -3,11 +3,15 @@
 
 ## Install
 
+For installation of all TwinYields components on Ubuntu see `Install.md`. Install python library using:
+
 ```
 git clone https://github.com/TwinYields/twinyields-python.git
 cd twinyields-python
 pip install -r requirements.txt --no-deps .
 ```
+
+
 
 ## Configuration
 
