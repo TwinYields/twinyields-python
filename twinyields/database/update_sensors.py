@@ -1,6 +1,6 @@
 import pymongo
 from ..sensors import SoilScoutAPI
-from .. import Config
+from ..config import Config
 import datetime
 import time
 from .database import TwinDataBase
@@ -82,7 +82,7 @@ class FarmiaistiUpdater(object):
         now = datetime.datetime.now()
         df = fa.get_measurements(since_time, now, device)
         if not df.empty:
-            print(df.time.max())
+            #print(df.time.max())
             self.db.save_dataframe(df, "Farmiaisti")
             N = df.shape[0]
             print(f"Wrote {N} new measurements to database")

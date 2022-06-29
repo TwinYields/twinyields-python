@@ -1,7 +1,7 @@
 import pandas as pd
 from pymongo import MongoClient
 from .database import TwinDataBase
-from .. import Config
+from ..config import Config
 import os
 
 class SimulationUpdater(object):
@@ -10,6 +10,7 @@ class SimulationUpdater(object):
         self.db = TwinDataBase()
 
     def update(self):
+        self.db.drop_collection("SimulationData")
         simulations = self.db.get_simfiles()
         for idx, row in simulations.iterrows():
             dbpath = os.path.splitext(os.path.join(Config.Simulation.path, row.path))[0] + ".db"
@@ -21,11 +22,8 @@ class SimulationUpdater(object):
         df = pd.read_sql_table("Report", "sqlite:///" + simdb)
         df["field"] = field
         sim_dict = df.to_dict(orient="records")
-        client = MongoClient()
-        db = client.TwinYields
-        db.drop_collection("SimulationData")
-        col = db.SimulationData
+        col = self.db["SimulationData"]
         col.insert_many(sim_dict)
-        print(f"Copied to from {simdb}")
+        print(f"Copied to MongoDB from {simdb}")
 
 

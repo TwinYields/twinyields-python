@@ -15,8 +15,14 @@ class TwinDataBase(object):
         client = pymongo.MongoClient()
         self.db = client.get_database("TwinYields")
 
+    def __getitem__(self, item):
+        return self.db[item]
+
     def get_collection(self, col):
         return self.db.get_collection(col)
+
+    def drop_collection(self, col):
+        self.db.drop_collection(col)
 
     def get_field(self, field=None):
         col = self.db.get_collection("Fields")

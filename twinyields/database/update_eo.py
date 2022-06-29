@@ -1,6 +1,6 @@
 from .database import TwinDataBase
 from ..eo import Sentinel2
-from .. import Config
+from ..config import Config
 import datetime
 import os
 from pathlib import Path
@@ -10,6 +10,11 @@ class EOUpdater(object):
     def __init__(self):
         self.db = TwinDataBase()
         self.name = "Sentinel2"
+
+    def update(self):
+        fields = self.db["Fields"].find()
+        for f in fields:
+            self.update_field(f["name"])
 
     def update_field(self, field=None):
         col = self.db.get_collection(self.name)

@@ -2,7 +2,7 @@ import json
 import requests
 import pandas as pd
 import datetime
-from ..import Config
+from ..config import Config
 
 class SoilScoutAPI(object):
 
