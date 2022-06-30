@@ -5,6 +5,7 @@ import os
 import subprocess
 from pathlib import Path
 import argparse
+import os
 
 """
 This class takes care of running and initializing Digital Twin 
@@ -14,10 +15,16 @@ class DigitalTwin(object):
 
     def __init__(self):
         self.db = database.TwinDataBase()
-        self.twinconsole = (Path.home() / "DigitalTwin/TwinConsole/TwinConsole").as_posix()
+        self.twinconsole = os.path.join(Config.Simulation.path, "TwinConsole/TwinConsole")
 
     def init(self):
+        os.makedirs(Config.Simulation.path, exist_ok=True)
         subprocess.run([self.twinconsole, "init"], cwd=Config.Simulation.path)
+        # Get historical weather data for site
+        print("Getting historical weather from Nasa Power")
+        ns = database.NasaPowerUpdater()
+        ns.update_history()
+        print("Done! You can run the model using twinyields -r")
 
     def update_sensors(self):
         su = database.SoilScoutUpdater()

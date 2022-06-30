@@ -32,7 +32,9 @@ class TwinDataBase(object):
             fld = col.find_one({"name": field})
         features = [{
             'geometry': fld["geometry"],
-            'properties': {'name': fld['name']}
+            'properties': {'name': fld['name'],
+                           'longitude': fld["location"]["coordinates"][0],
+                           'latitude' : fld["location"]["coordinates"][1] }
         }]
         field_df = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
 
@@ -46,10 +48,18 @@ class TwinDataBase(object):
         zone_df = gpd.GeoDataFrame.from_features(fcol, crs="EPSG:4326")
         return field_df, zone_df
 
+    def _find_df(self, collection, filter={}, fields={}):
+        if fields:
+            q = self.db[collection].find(filter, fields)
+        else:
+            q = self.db[collection].find(filter)
+        return pd.DataFrame.from_records(list(q), exclude=["_id"])
+
     def get_s2(self, filter={}):
-        col = self.db.get_collection("Sentinel2")
-        data = col.find(filter)
-        return pd.DataFrame.from_records(data, exclude=["_id"])
+        return self._find_df("Sentinel2", filter)
+        #col = self.db.get_collection("Sentinel2")
+        #data = col.find(filter)
+        #return pd.DataFrame.from_records(data, exclude=["_id"])
 
     def get_simfiles(self):
         col = self.db.get_collection("SimulationFiles")
@@ -68,9 +78,28 @@ class TwinDataBase(object):
 
     def get_metfile(self, weatherfile, device):
         data = self.get_farmiaisti(device)
+        #Filter out partial days
+        if data.time.max().hour < 23:
+            data = data[data.time < data.time.max().floor("D")]
+        df = apsim.farmiaisti_to_met(data)
+        year = datetime.datetime.now().year
+        maxday = df[df["year"] == year].day.max()
+        history_df = self.get_historical_met(maxday, year)
+
         info = self.db["FarmiaistiStations"].find_one({"description": device})
-        apsim.farmiaisti_to_met(data, weatherfile, device, info["location"])
+        lat, lon = info["location"].split(",")
+        df = pd.concat([df, history_df])
+        apsim.df_to_met(weatherfile, df, device, lat, lon)
         print(f"Weather data written to {weatherfile}")
+
+    def get_historical_met(self, start, year):
+        cols = ["year", "day", "radn", "maxt", "mint", "rain", "rh", "windspeed"]
+        fields = {k: 1 for k in cols}
+        history_df = self._find_df("NasaPowerDailyMean", filter={"day": {"$gt": int(start)}},
+            fields=fields)
+        history_df["year"] = year
+        history_df = history_df[cols]
+        return history_df.round(1)
 
     def save_dataframe(self, df, col_name, drop=False):
         data_dict = df.to_dict(orient="records")
