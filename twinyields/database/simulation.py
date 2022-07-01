@@ -18,9 +18,9 @@ class SimulationUpdater(object):
 
     """Copy APSIM simulation from sqlite to MongoDB collection"""
     def copy_simulation(self, simdb, field):
-        print(simdb)
         df = pd.read_sql_table("Report", "sqlite:///" + simdb)
         df["field"] = field
+        df = df.rename(mapper=lambda x: x.replace(".", ""), axis=1)
         sim_dict = df.to_dict(orient="records")
         col = self.db["SimulationData"]
         col.insert_many(sim_dict)

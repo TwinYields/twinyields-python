@@ -36,7 +36,7 @@ python3 -m pip install -r requirements.txt --no-deps .
 
 ```
 cd ~/git
-clone --recurse-submodules git@github.com:TwinYields/TwinYields.git
+git clone --recurse-submodules git@github.com:TwinYields/TwinYields.git
 dotnet publish -c Release ~/git/TwinYields/TwinConsole/TwinConsole.csproj -o ~/DigitalTwin/TwinConsole
 ```
 
