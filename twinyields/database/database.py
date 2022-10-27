@@ -120,6 +120,31 @@ class TwinDataBase(object):
         col = self.db.get_collection(col_name)
         col.insert_one(doc)
 
+    def save_field(self, field, fieldname, products, zones):
+        farm = self.db["Farms"].find_one()
+        fdf = field.copy()
+        fdf["location"] = fdf.centroid
+        ft = fdf.iloc[[0]].__geo_interface__["features"][0]
+        p = ft["properties"]
+        loc = gpd.GeoSeries(p["location"]).__geo_interface__["features"][0]["geometry"]
+        field = {"farmid": farm["_id"], "name": fieldname,
+                 "location": loc, "geometry": ft["geometry"]}
+        gdf = zones.copy()
+        gdf = gdf.to_crs("epsg:4326")
+        gdf["location"] = gdf.centroid
+        zones = []
+        prods = [products[k] for k in sorted(products.keys())]
+        for idx in range(gdf.shape[0]):
+            ft = gdf.iloc[[idx]].__geo_interface__["features"][0]
+            p = ft["properties"]
+            loc = gpd.GeoSeries(p["location"]).__geo_interface__["features"][0]["geometry"]
+            zone = {"name": f"zone{p['zone']}", "location": loc, "geometry": ft["geometry"],
+                    "rates": p["grp"], "products": prods
+                    }
+            zones.append(zone)
+        field["zones"] = zones
+        self.db["Fields"].insert_one(field)
+
     """Get Sentinel2 rasters for a field, use limit=1 to get only most recent
     """
     def get_s2_raster(self, field, limit=100):

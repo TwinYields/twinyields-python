@@ -1,3 +1,4 @@
+import glob
 import sys
 from . import database
 from .config import Config
@@ -6,6 +7,7 @@ import subprocess
 from pathlib import Path
 import argparse
 import os
+from . import operations
 
 """
 This class takes care of running and initializing Digital Twin 
@@ -19,6 +21,18 @@ class DigitalTwin(object):
 
     def init(self):
         os.makedirs(Config.Simulation.path, exist_ok=True)
+        self.db.drop_collection("Farms")
+        self.db.drop_collection("Fields")
+        self.db["Farms"].insert_one({"name": "Jokioinen SmartFarm"})
+
+        # Init from sowing tasks
+        tasks = glob.glob(os.path.join(Config.Simulation.path + "tasks/sowing/*"))
+        print("Found tasks:", tasks)
+        print("Processing task data")
+        for task in tasks:
+            tfile = f"{task}/TASKDATA.XML"
+            s = operations.Sowing(tfile)
+            self.db.save_field(s.field, s.fieldname, s.products, s.zones)
         subprocess.run([self.twinconsole, "init"], cwd=Config.Simulation.path)
         # Get historical weather data for site
         print("Getting historical weather from Nasa Power")
@@ -47,10 +61,11 @@ class DigitalTwin(object):
         su.update()
 
     def run(self):
+        print("Updating weather data")
         self.update_model_inputs()
         subprocess.run([self.twinconsole, "run"], cwd=Config.Simulation.path)
+        print("Copying to database")
         self.collect_simulation_data()
-
 
 """Command line interface"""
 def twinyields(*, init=False, run=False, update_sensors=False, update_eo=False):
