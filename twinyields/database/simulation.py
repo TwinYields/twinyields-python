@@ -16,6 +16,12 @@ class SimulationUpdater(object):
             dbpath = os.path.splitext(os.path.join(Config.Simulation.path, row.path))[0] + ".db"
             self.copy_simulation(dbpath.replace("\\", "/"), row.field)
 
+    def clean_dbs(self):
+        simulations = self.db.get_simfiles()
+        for idx, row in simulations.iterrows():
+            dbpath = os.path.splitext(os.path.join(Config.Simulation.path, row.path))[0] + ".db"
+            os.remove(dbpath)
+
     """Copy APSIM simulation from sqlite to MongoDB collection"""
     def copy_simulation(self, simdb, field):
         df = pd.read_sql_table("Report", "sqlite:///" + simdb)

@@ -10,14 +10,15 @@ import os
 from . import operations
 
 """
-This class takes care of running and initializing Digital Twin 
-sensor updates and simulation 
+This class takes care of running and initializing Digital Twin
+sensor updates and simulation
 """
 class DigitalTwin(object):
 
     def __init__(self):
         self.db = database.TwinDataBase()
         self.twinconsole = os.path.join(Config.Simulation.path, "TwinConsole/TwinConsole")
+        self.sim_updater = database.SimulationUpdater()
 
     def init(self):
         os.makedirs(Config.Simulation.path, exist_ok=True)
@@ -56,16 +57,13 @@ class DigitalTwin(object):
         device = Config.Farmiaisti.devices[0]
         self.db.get_metfile(wf, device)
 
-    def collect_simulation_data(self):
-        su = database.SimulationUpdater()
-        su.update()
-
     def run(self):
         print("Updating weather data")
+        self.sim_updater.clean_dbs()
         self.update_model_inputs()
         subprocess.run([self.twinconsole, "run"], cwd=Config.Simulation.path)
         print("Copying to database")
-        self.collect_simulation_data()
+        self.sim_updater.update()
 
 """Command line interface"""
 def twinyields(*, init=False, run=False, update_sensors=False, update_eo=False):
@@ -82,7 +80,7 @@ def twinyields(*, init=False, run=False, update_sensors=False, update_eo=False):
 def twinyields_cli():
     parser = argparse.ArgumentParser(description='Control TwinYields digital twin')
     parser = argparse.ArgumentParser(prog="twinyields", description='Control TwinYields digital twin')
-    parser.add_argument('-i', '--init', action='store_true', 
+    parser.add_argument('-i', '--init', action='store_true',
                         default=False, help="Initialize the digital twin")
     parser.add_argument('-s', '--update-sensors', action='store_true',
                         default=False, help="Fetch updated sensor data")
@@ -90,7 +88,7 @@ def twinyields_cli():
                         default=False, help="Fetch updated satellite data")
     parser.add_argument('-r', '--run', action='store_true',
                         default=False, help="Run the simulation model")
-    
+
     if len(sys.argv) == 1:
         parser.print_help()
     else:
