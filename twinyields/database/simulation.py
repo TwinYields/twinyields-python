@@ -20,7 +20,8 @@ class SimulationUpdater(object):
         simulations = self.db.get_simfiles()
         for idx, row in simulations.iterrows():
             dbpath = os.path.splitext(os.path.join(Config.Simulation.path, row.path))[0] + ".db"
-            os.remove(dbpath)
+            if os.path.exists(dbpath):
+                os.remove(dbpath)
 
     """Copy APSIM simulation from sqlite to MongoDB collection"""
     def copy_simulation(self, simdb, field):
