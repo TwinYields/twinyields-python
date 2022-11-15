@@ -1,1 +1,2 @@
 recursive-include twinyields/eo/biophys *
+recursive-include twinyields/resources *

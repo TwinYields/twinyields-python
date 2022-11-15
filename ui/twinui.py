@@ -214,7 +214,7 @@ class TwinUI(object):
         print("\tSetting layout")
         p1 = pn.Column(
             pn.FlexBox(rp3, rp1, rp2, rc1, rc2, sc_moisture, flex_direction="row"),
-            sizing_mode='stretch_width'
+            sizing_mode='stretch_width', max_width=1600
         )
 
         p2 = pn.Column(folium_panel,

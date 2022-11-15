@@ -8,6 +8,7 @@ from pathlib import Path
 import argparse
 import os
 from . import operations
+import shutil
 
 """
 This class takes care of running and initializing Digital Twin
@@ -22,6 +23,11 @@ class DigitalTwin(object):
 
     def init(self):
         os.makedirs(Config.Simulation.path, exist_ok=True)
+        os.makedirs(Config.Simulation.path + "/prototypes", exist_ok=True)
+        protos = glob.glob(os.path.dirname(__file__) + "/resources/*.apsimx")
+        for p in protos:
+            shutil.copy(p, Config.Simulation.path + "/prototypes/" + os.path.basename(p))
+
         self.db.drop_collection("Farms")
         self.db.drop_collection("Fields")
         self.db["Farms"].insert_one({"name": "Jokioinen SmartFarm"})
