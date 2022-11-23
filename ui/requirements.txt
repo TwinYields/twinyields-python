@@ -1,0 +1,5 @@
+panel
+holoviews
+hvplot
+suntime
+folium
