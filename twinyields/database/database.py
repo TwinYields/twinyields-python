@@ -40,11 +40,16 @@ class TwinDataBase(object):
 
         fcol = {"type": "FeatureCollection", "features": []}
         for zone in fld["zones"]:
-            fcol["features"].append({
+            feats = {
                 'id': zone['name'],
                 'geometry': zone["geometry"],
-                'properties': {'field_name': fld['name'], 'zone': zone['name'], 'rate': zone['rates'][0]}
-            })
+                'properties': {'field_name': fld['name'], 'zone': zone['name']}
+            }
+            for r in range(len(zone["rates"])):
+                feats["properties"][f"rate{r}"] =  zone["rates"][r]
+                feats["properties"][f"product{r}"] = zone["products"][r]
+            fcol["features"].append(feats)
+
         zone_df = gpd.GeoDataFrame.from_features(fcol, crs="EPSG:4326")
         return field_df, zone_df
 
