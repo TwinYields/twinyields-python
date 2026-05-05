@@ -22,8 +22,10 @@ S2_BANDS_COG = [
     "B11",
     "B12",
 ]
-# 10-20 m bands
+# 10-20 m bands, original sat search client
 S2_BANDS_10_20_COG = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
+# Bands for new stac client
+S2_BANDS_10_20_S2 = ["blue", "green", "red", "rededge1", "rededge2", "rededge3", "nir", "nir08", "swir16", "swir22"]
 
 S2_BANDS_GEE = [b.replace("B0", "B") for b in S2_BANDS_COG]
 S2_BANDS_10_20_GEE = [b.replace("B0", "B") for b in S2_BANDS_10_20_COG]

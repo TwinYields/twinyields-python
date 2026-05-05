@@ -18,6 +18,7 @@ import xarray as xr
 import urllib
 import datetime
 from collections import Counter
+from pystac_client import Client
 
 import xmltodict
 from rasterio import MemoryFile
@@ -28,6 +29,7 @@ from ..common.vector import (
 )
 from ..common.raster import mask_raster, resample_raster
 from ..common.sentinel2 import (
+    S2_BANDS_10_20_COG,
     S2_SCL_CLASSES,
     S2_REFL_TRANS,
     S2_FILTER1,
@@ -43,22 +45,36 @@ def search_s2_cogs(aoi, req_params):
     )
     bbox = list(aoi.geometry.bounds)
     dates = "{}/{}".format(req_params.datestart, req_params.dateend)
-    URL = "https://earth-search.aws.element84.com/v0"
-    search = satsearch.Search(
-        url=URL, collections=["sentinel-s2-l2a-cogs"], datetime=dates, bbox=bbox,
-        query=req_params.query
-    )
-    if search.found() == 0:
-        print("No available data for specified time!")
-        items = None
-    else:
-        items = search.items()
-        print("Found {} available S2 acquisition dates.".format(len(items)))
-    return items
+
+    client = Client.open("https://earth-search.aws.element84.com/v1")
+    search = client.search(
+        max_items=1000,
+        collections=['sentinel-2-l2a'],
+        bbox=bbox,
+        datetime=dates,
+        query= req_params.query
+    ) 
+    print(f"{search.matched()} items found")
+    stac_items = search.item_collection()
+
+    #URL = "https://earth-search.aws.element84.com/v0"
+    #search = satsearch.Search(
+    #    url=URL, collections=["sentinel-s2-l2a-cogs"], datetime=dates, bbox=bbox,
+    #    query=req_params.query
+    #)
+    #if search.found() == 0:
+    #    print("No available data for specified time!")
+    #    items = None
+    #else:
+    #     items = search.items()
+    #     print("Found {} available S2 acquisition dates.".format(len(items)))
+    #return items, stac_items
+    return stac_items
 
 
 def get_xml_metadata(item):
-    with urllib.request.urlopen(item.assets["metadata"]["href"]) as url:
+    #with urllib.request.urlopen(item.assets["metadata"]["href"]) as url:
+    with urllib.request.urlopen(item.assets["granule_metadata"].href) as url:
         metadata = xmltodict.parse(url.read().decode())
     metadata = metadata.popitem(last=False)[1]
     return metadata
@@ -98,18 +114,21 @@ def get_angles(item):
 
 def cog_get_s2_scl_data(aoi, item):
     SCL_NODATA = 99
-    cog_crs = "EPSG:{}".format(item.properties["proj:epsg"])
+    #cog_crs = "EPSG:{}".format(item.properties["proj:epsg"])
+    cog_crs = item.properties["proj:code"]
     aoi_geometry_cog_crs = transform_crs(aoi.geometry, aoi.geometry_crs, cog_crs)
     bbox_cog_crs = list(aoi_geometry_cog_crs.bounds)
 
     # Scene Classification Band
-    band = "SCL"
+    band = "SCL".lower()
     # Transform aoi to pixel coordinates/window
-    cog_transform = rasterio.transform.Affine(*item.assets[band]["proj:transform"][:-3])
+    #cog_transform = rasterio.transform.Affine(*item.assets[band]["proj:transform"][:-3])
+    cog_transform = rasterio.transform.Affine(*item.assets[band].extra_fields["proj:transform"])
     window = rasterio.windows.from_bounds(*bbox_cog_crs, cog_transform).round_offsets()
 
     # Get windowed data
-    file_url = item.assets[band]["href"]
+    #file_url = item.assets[band]["href"]
+    file_url = item.assets[band].href
     print(file_url)
     # loop trough bands (file_url) here
     with rasterio.open(file_url) as src:
@@ -145,27 +164,41 @@ def cog_get_s2_scl_data(aoi, item):
 
 def cog_generate_qi_dict(aoi, item, scl_data):
 
-    date = pd.to_datetime(
-        datetime.datetime.strptime(
-            item.properties["sentinel:product_id"].split("_")[2], "%Y%m%dT%H%M%S"
-        )
-    )
+    #date = pd.to_datetime(
+    #    datetime.datetime.strptime(
+    #        item.properties["sentinel:product_id"].split("_")[2], "%Y%m%dT%H%M%S"
+    #    )
+    #)
+    date = item.datetime
     projection = {
         "type": "Projection",
-        "crs": "EPSG:{}".format(item.properties["proj:epsg"]),
-        "transform": item.assets["SCL"]["proj:transform"][:-3],
+        #"crs": "EPSG:{}".format(item.properties["proj:epsg"]),
+        "crs" : item.properties["proj:code"],
+        #"transform": item.assets["SCL"]["proj:transform"][:-3],
+        "transform" : item.assets["scl"].extra_fields["proj:transform"]
     }
+
+    #qi_dict = {
+    #    "Date": date,
+    #    "name": aoi.name,
+    #    "tileid": "{}{}{}".format(
+    #        #item.properties["sentinel:utm_zone"],
+    #        item.properties["mgrs:utm_zone"],
+    #        item.properties["sentinel:latitude_band"],
+    #        item.properties["sentinel:grid_square"],
+    #    ),
+    #    "assetid": item.id,
+    #    "productid": item.properties["sentinel:product_id"],
+    #    "projection": projection,
+    #    "datasource": "aws_cog",
+    #}
 
     qi_dict = {
         "Date": date,
         "name": aoi.name,
-        "tileid": "{}{}{}".format(
-            item.properties["sentinel:utm_zone"],
-            item.properties["sentinel:latitude_band"],
-            item.properties["sentinel:grid_square"],
-        ),
+        "tileid": item.properties["grid:code"].split("-")[1],
         "assetid": item.id,
-        "productid": item.properties["sentinel:product_id"],
+        "productid": item.properties["s2:product_uri"].split(".")[0],
         "projection": projection,
         "datasource": "aws_cog",
     }
@@ -202,23 +235,59 @@ def cog_get_s2_quality_info(aoi, req_params, items):
 
 
 def cog_create_data_dict(aoi, item):
-    date = pd.to_datetime(
-        datetime.datetime.strptime(
-            item.properties["sentinel:product_id"].split("_")[2], "%Y%m%dT%H%M%S"
-        )
-    )
+    date = item.datetime
+    #projection = {
+    #    "type": "Projection",
+    #    #"crs": "EPSG:{}".format(item.properties["proj:epsg"]),
+    #    "crs" : item.properties["proj:code"],
+    #    #"transform": item.assets["SCL"]["proj:transform"][:-3],
+    #    "transform" : item.assets["scl"].extra_fields["proj:transform"]
+    #}
+
+    #qi_dict = {
+    #    "Date": date,
+    #    "name": aoi.name,
+    #    "tileid": "{}{}{}".format(
+    #        #item.properties["sentinel:utm_zone"],
+    #        item.properties["mgrs:utm_zone"],
+    #        item.properties["sentinel:latitude_band"],
+    #        item.properties["sentinel:grid_square"],
+    #    ),
+    #    "assetid": item.id,
+    #    "productid": item.properties["sentinel:product_id"],
+    #    "projection": projection,
+    #    "datasource": "aws_cog",
+    #}
+
     data_dict = {
         "Date": date,
         "name": aoi.name,
-        "tileid": "{}{}{}".format(
-            item.properties["sentinel:utm_zone"],
-            item.properties["sentinel:latitude_band"],
-            item.properties["sentinel:grid_square"],
-        ),
+        "tileid": item.properties["grid:code"].split("-")[1],
         "assetid": item.id,
-        "productid": item.properties["sentinel:product_id"],
-        "projection": "EPSG:{}".format(item.properties["proj:epsg"]),
+        "productid": item.properties["s2:product_uri"].split(".")[0],
+        "projection": item.properties["proj:code"],
+    
     }
+
+    #date = pd.to_datetime(
+    #    datetime.datetime.strptime(
+    #        item.properties["sentinel:product_id"].split("_")[2], "%Y%m%dT%H%M%S"
+    #    )
+    #)
+    #data_dict = {
+    #    "Date": date,
+    #    "name": aoi.name,
+    #    "tileid": "{}{}{}".format(
+    #        item.properties["sentinel:utm_zone"],
+    #        item.properties["sentinel:latitude_band"],
+    #        item.properties["sentinel:grid_square"],
+    #    ),
+    #    "assetid": item.id,
+    #    "productid": item.properties["sentinel:product_id"],
+    #    "projection": "EPSG:{}".format(item.properties["proj:epsg"]),
+    #}
+
+
     return data_dict
 
 
@@ -263,26 +332,29 @@ def cog_get_s2_band_data(
         data_dict["profile"] = []
 
         # Tranform aoi_geometry to raster crs
-        cog_crs = "EPSG:{}".format(item.properties["proj:epsg"])
+        #cog_crs = "EPSG:{}".format(item.properties["proj:epsg"])
+        cog_crs = item.properties["proj:code"]
         aoi_geometry_cog_crs = transform_crs(aoi.geometry, aoi.geometry_crs, cog_crs)
         bbox_cog_crs = list(aoi_geometry_cog_crs.bounds)
         # Get larger window for resampling
         bbox_cog_crs = expand_bounds(bbox_cog_crs, 80)
 
         # currently always includes "SCL" data
-        for band in req_params.bands + ["SCL"]:
+        for band in req_params.bands + ["scl"]:
             cog_transform = rasterio.transform.Affine(
-                *item.assets[band]["proj:transform"][:-3]
+                #*item.assets[band]["proj:transform"][:-3]
+                *item.assets[band].extra_fields["proj:transform"]
             )
             window = rasterio.windows.from_bounds(
                 *bbox_cog_crs, cog_transform
             ).round_offsets()
 
-            file_url = item.assets[band]["href"]
+            #file_url = item.assets[band.lower()]["href"]
+            file_url = item.assets[band.lower()].href
             # loop trough bands (file_url) here
             with rasterio.open(file_url) as src:
                 kwds = src.profile
-                if band == "SCL":
+                if band == "scl":
                     raster_data = src.read(1, window=window, boundless=True)
                 else:
                     raster_data = (
@@ -321,7 +393,7 @@ def cog_get_s2_band_data(
                 with memfile.open(**new_kwds) as dataset:
                     dataset.write(data)
 
-                if band == "SCL":
+                if band == "scl":
                     no_data = 99
                 else:
                     no_data = np.nan
@@ -337,6 +409,7 @@ def cog_get_s2_band_data(
         #data_df = data_df.append(data_dict, ignore_index=True)
         data_list.append(data_dict)
     data_df = pd.DataFrame(data_list)
+
     data_df = data_df.sort_values("Date").reset_index(drop=True)
 
     # Transform to xarray dataset
@@ -426,7 +499,8 @@ def cog_s2_data_to_xarray(aoi, req_params, dataframe):
 
     aoi_pixels = np.size(narray[0, 0, :, :]) - np.sum(np.isnan(narray[0, 0, :, :]))
 
-    scl_array = np.stack(dataframe["SCL"].values, axis=2).transpose().astype(np.int16)
+    scl_array = np.stack(dataframe["scl"].values, axis=2).transpose().astype(np.int16)
+    bands = S2_BANDS_10_20_COG
 
     coords = {
         "time": dataframe["Date"].values.astype(np.datetime64),

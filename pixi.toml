@@ -1,0 +1,12 @@
+[workspace]
+authors = ["Matti Pastell <430863+mpastell@users.noreply.github.com>"]
+channels = ["https://conda.modular.com/max-nightly", "conda-forge"]
+name = "twinyields-python"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.10.*"
+pip = ">=26.0.1,<27"

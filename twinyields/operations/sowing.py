@@ -1,4 +1,4 @@
-import farmingpy as fp
+#import farmingpy as fp
 import numpy as np
 
 class Sowing(object):

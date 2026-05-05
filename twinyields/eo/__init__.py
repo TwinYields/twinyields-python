@@ -8,7 +8,7 @@ import os.path
 
 from . import biophys
 from .common.classes import AOI, RequestParams
-from .common.sentinel2 import S2_BANDS_10_20_COG
+from .common.sentinel2 import S2_BANDS_10_20_COG, S2_BANDS_10_20_S2
 from .common.wrappers import get_s2_qi_and_data
 import rioxarray
 import pandas as pd
@@ -31,7 +31,7 @@ class Sentinel2(object):
             datestart,
             dateend,
             datasource=datasource,
-            bands=S2_BANDS_10_20_COG,
+            bands=S2_BANDS_10_20_S2,
             query=query,
             target_gsd=10.0)
         aoi.qi, aoi.data = get_s2_qi_and_data(aoi, request, qi_threshold=qi_threshold)

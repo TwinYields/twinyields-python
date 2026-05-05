@@ -3,4 +3,12 @@ __pycache__
 .ipynb_checkpoints
 *.tiff
 build/**
-*.egg-info
+*.egg-info# pixi environments
+.pixi/*
+!.pixi/config.toml
+*scratch*.*
+*.vscode
+*.code-workspace
+twinyields.egg-info
+rasters/*
+*.geojson
