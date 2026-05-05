@@ -45,7 +45,8 @@ def search_s2_cogs(aoi, req_params):
     dates = "{}/{}".format(req_params.datestart, req_params.dateend)
     URL = "https://earth-search.aws.element84.com/v0"
     search = satsearch.Search(
-        url=URL, collections=["sentinel-s2-l2a-cogs"], datetime=dates, bbox=bbox
+        url=URL, collections=["sentinel-s2-l2a-cogs"], datetime=dates, bbox=bbox,
+        query=req_params.query
     )
     if search.found() == 0:
         print("No available data for specified time!")
@@ -109,6 +110,7 @@ def cog_get_s2_scl_data(aoi, item):
 
     # Get windowed data
     file_url = item.assets[band]["href"]
+    print(file_url)
     # loop trough bands (file_url) here
     with rasterio.open(file_url) as src:
         kwds = src.profile
@@ -184,7 +186,7 @@ def cog_get_s2_quality_info(aoi, req_params, items):
     #qi_df = pd.DataFrame()
     qi_data = []
     for item in items:
-        # print("Retrieving QI for item {}...".format(item.id))
+        print("Retrieving QI for item {}...".format(item.id))
         scl_dict = cog_get_s2_scl_data(aoi, item)
         qi_dict = cog_generate_qi_dict(aoi, item, scl_dict["data"])
         qi_data.append(qi_dict)

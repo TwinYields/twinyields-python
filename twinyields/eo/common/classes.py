@@ -29,7 +29,9 @@ class RequestParams:
         'B6', 'B7', 'B8A', 'B11', 'B12'].
     """
 
-    def __init__(self, datestart, dateend, datasource, bands, target_gsd=20):
+    def __init__(self, datestart, dateend, datasource, bands, 
+                 query= {"eo:cloud_cover": {"lt": 30}}, 
+                 target_gsd=20):
         """.
 
         Parameters
@@ -44,6 +46,8 @@ class RequestParams:
             List of strings with band name.
             The default is ['B3', 'B4', 'B5',
             'B6', 'B7', 'B8A', 'B11', 'B12'].
+        query : dict, optional
+            Query passed to SatSearch. Default is {"eo:cloud_cover": {"lt": 30}}.
         target_gsd : float
             Requested Ground Sampling Distance (GSD). All bands will be resampled to this resolution.
             Default 20m.
@@ -56,6 +60,7 @@ class RequestParams:
         self.datestart = datestart
         self.dateend = dateend
         self.datasource = datasource  # "gee" or  "aws_cog"
+        self.query = query
         if bands:
             self.bands = bands
         else:

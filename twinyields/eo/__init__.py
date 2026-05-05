@@ -21,8 +21,10 @@ class Sentinel2(object):
     def __init__(self):
         self.data = None
         self.zone_data = {}
+        self.qi = None
 
-    def get_data(self, field, datestart, dateend, zones=None, qi_threshold=0.1, crs="EPSG:4326"):
+    def get_data(self, field, datestart, dateend, zones=None, qi_threshold=0.1, query={"eo:cloud_cover": {"lt": 30}},
+                  crs="EPSG:4326"):
         aoi = AOI(field.iloc[0]["name"], field.iloc[0].geometry, field.crs)
         datasource = "aws_cog"
         request = RequestParams(
@@ -30,9 +32,11 @@ class Sentinel2(object):
             dateend,
             datasource=datasource,
             bands=S2_BANDS_10_20_COG,
+            query=query,
             target_gsd=10.0)
         aoi.qi, aoi.data = get_s2_qi_and_data(aoi, request, qi_threshold=qi_threshold)
         self.data = aoi.data
+        self.qi = aoi.qi
         if self.data is not None:
             self.compute_indices()
             self.data = self.data.rio.write_crs(self.data.crs)
