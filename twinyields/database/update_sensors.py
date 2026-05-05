@@ -15,10 +15,15 @@ class SoilScoutUpdater(object):
         client = pymongo.MongoClient()
         db = client.get_database(Config.database)
         self.collection = db.get_collection("SoilScout")
-        if devices is None:
-            self.devices = Config.SoilScout.devices
-        else:
-            self.devices = devices
+        sc = SoilScoutAPI()
+        all_devices = sc.devices()
+        self.devices = [d["id"] for d in all_devices if d["is_archived"] == False]
+       
+        
+        #if devices is None:
+        #    self.devices = Config.SoilScout.devices
+        #else:
+        #    self.devices = devices
 
     def update(self):
         for device in self.devices:
@@ -38,11 +43,11 @@ class SoilScoutUpdater(object):
         last = list(self.collection.find({"device": device}).sort("timestamp", -1).limit(1))
         #print(last)
         if not last:
-            since_time = datetime.datetime(2020, 1, 1)
+            since_time = datetime.datetime(2020, 4, 1)
             print("No data, starting from", since_time)
         else:
             since_time = last[0]["timestamp"] + datetime.timedelta(seconds=10)
-
+        sc = SoilScoutAPI()
         #Ask at most 180 days at a time, API seems to error otherwise
         year_dt = since_time + datetime.timedelta(days=180)
         now = datetime.datetime.now()
@@ -51,7 +56,7 @@ class SoilScoutUpdater(object):
         until = until_time.strftime("%Y-%m-%dT%H:%M:%S")
 
         print("Updating from ", since, "until", until)
-        sc = SoilScoutAPI()
+        
         measurements = sc.measurements(since=since, until=until, device=device)
         if measurements[0]:
             for m in measurements:
@@ -65,35 +70,34 @@ class FarmiaistiUpdater(object):
     def __init__(self):
         self.db = TwinDataBase()
         self.collection = self.db.get_collection("Farmiaisti")
+        self.api = Farmiaisti(user=Config.Farmiaisti.user, password=Config.Farmiaisti.password)
+        self.devices = self.api.get_devices()["devices"]
 
     def update(self):
-        for device in Config.Farmiaisti.devices:
-            print(f"Updating Farmiaisti device: {device}")
+        for device in self.devices:
+            print(f"Updating Farmiaisti device: {device['id_val']}")
             self.update_device(device)
 
     def update_device(self, device):
-        fa = Farmiaisti(user=Config.Farmiaisti.user, password=Config.Farmiaisti.password)
-        last = list(self.collection.find({"device": device}).sort("time", -1).limit(1))
+        last = list(self.collection.find({"device": device["id_val"]}).sort("time", -1).limit(1))
         if not last:
-            since_time = datetime.datetime(2020, 1, 1)
-            print("No data, starting from", since_time)
+            since_time = datetime.datetime(2020, 4, 1)
+            print(f"No data for device {device['id_val']}, starting from", since_time)
         else:
-            since_time = last[0]["time"] + datetime.timedelta(minutes=5) #Measurement done every 15 minutes
+            since_time = last[0]["Time"] + datetime.timedelta(minutes=5) #Measurement done every 15 minutes
+            print(f"Updating device {device['id_val']}, starting from", since_time)
         now = datetime.datetime.now()
-        df = fa.get_measurements(since_time, now, device)
+        df = self.api.get_measurements(since_time, now, device)
+
         if not df.empty:
             #print(df.time.max())
+            df["device"] = device["id_val"]
             self.db.save_dataframe(df, "Farmiaisti")
             N = df.shape[0]
             print(f"Wrote {N} new measurements to database")
         else:
             print("Nothing to update")
 
-    def update_description(self, device):
-        fa = Farmiaisti(user=Config.Farmiaisti.user, password=Config.Farmiaisti.password)
-        info = fa.get_deviceinfo(device)
-        col = self.db.get_collection("FarmiaistiStations")
-        col.insert_one(info)
 
 
 
