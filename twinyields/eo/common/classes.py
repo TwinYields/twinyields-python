@@ -9,8 +9,7 @@ Created on Tue Mar 16 10:45:05 2021
 """
 import sys
 from .sentinel2 import (
-    S2_BANDS_COG,
-    S2_BANDS_GEE,
+    S2_BANDS_10_20_S2
 )
 
 
@@ -25,11 +24,9 @@ class RequestParams:
         Starting date for data request in form "2019-12-31".
     bands : list, optional
         List of strings with band name.
-        the default is ['B3', 'B4', 'B5',
-        'B6', 'B7', 'B8A', 'B11', 'B12'].
     """
 
-    def __init__(self, datestart, dateend, datasource, bands, 
+    def __init__(self, datestart, dateend, datasource="aws_cog", bands = S2_BANDS_10_20_S2, 
                  query= {"eo:cloud_cover": {"lt": 30}}, 
                  target_gsd=20):
         """.
@@ -44,8 +41,7 @@ class RequestParams:
             Source of data. Current options "gee" og "aws_cog".
         bands : list, optional
             List of strings with band name.
-            The default is ['B3', 'B4', 'B5',
-            'B6', 'B7', 'B8A', 'B11', 'B12'].
+            The default is S2_BANDS_10_20_S2
         query : dict, optional
             Query passed to SatSearch. Default is {"eo:cloud_cover": {"lt": 30}}.
         target_gsd : float
@@ -61,15 +57,8 @@ class RequestParams:
         self.dateend = dateend
         self.datasource = datasource  # "gee" or  "aws_cog"
         self.query = query
-        if bands:
-            self.bands = bands
-        else:
-            if datasource == "gee":
-                self.bands = S2_BANDS_GEE
-            elif datasource == "aws_cog":
-                self.bands = S2_BANDS_COG
-            else:
-                sys.exit("""Bands not given and unknown datasource.""")
+
+        self.bands = bands
         self.target_gsd = target_gsd
 
 

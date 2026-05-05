@@ -129,7 +129,6 @@ def cog_get_s2_scl_data(aoi, item):
     # Get windowed data
     #file_url = item.assets[band]["href"]
     file_url = item.assets[band].href
-    print(file_url)
     # loop trough bands (file_url) here
     with rasterio.open(file_url) as src:
         kwds = src.profile
@@ -215,11 +214,12 @@ def cog_generate_qi_dict(aoi, item, scl_data):
 
 
 def cog_get_s2_quality_info(aoi, req_params, items):
+    print(f"Retrieving QIs for {len(items)} items")
 
     #qi_df = pd.DataFrame()
     qi_data = []
     for item in items:
-        print("Retrieving QI for item {}...".format(item.id))
+        #print("Retrieving QI for item {}...".format(item.id))
         scl_dict = cog_get_s2_scl_data(aoi, item)
         qi_dict = cog_generate_qi_dict(aoi, item, scl_dict["data"])
         qi_data.append(qi_dict)

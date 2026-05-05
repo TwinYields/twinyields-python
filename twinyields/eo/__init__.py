@@ -8,7 +8,7 @@ import os.path
 
 from . import biophys
 from .common.classes import AOI, RequestParams
-from .common.sentinel2 import S2_BANDS_10_20_COG, S2_BANDS_10_20_S2
+from .common.sentinel2 import S2_BANDS_10_20_S2, S2_BANDS_10_20_COG, S2_FILTER1, S2_FILTER2
 from .common.wrappers import get_s2_qi_and_data
 import rioxarray
 import pandas as pd
@@ -23,8 +23,10 @@ class Sentinel2(object):
         self.zone_data = {}
         self.qi = None
 
-    def get_data(self, field, datestart, dateend, zones=None, qi_threshold=0.1, query={"eo:cloud_cover": {"lt": 30}},
-                  crs="EPSG:4326"):
+    def get_data(self, field, datestart, dateend, zones=None, qi_threshold=0.1, 
+                 query={"eo:cloud_cover": {"lt": 50}},
+                 qi_filter=S2_FILTER1,
+                 crs="EPSG:4326"):
         aoi = AOI(field.iloc[0]["name"], field.iloc[0].geometry, field.crs)
         datasource = "aws_cog"
         request = RequestParams(
@@ -91,3 +93,4 @@ class Sentinel2(object):
         self.data = biophys.run_snap_biophys(self.data, "LAI")
         self.data = biophys.run_snap_biophys(self.data, "FAPAR")
         self.data = biophys.compute_ndvi(self.data)
+        self.data = biophys.compute_ci_red_edge(self.data)
