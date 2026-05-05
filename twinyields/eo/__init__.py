@@ -22,6 +22,7 @@ class Sentinel2(object):
         self.data = None
         self.zone_data = {}
         self.qi = None
+        self.indices = ["lai", "fapar", "fcover", "lai_cab", "lai_cw", "ndvi", "ci_red_edge", "gcc", "evi"]
 
     def get_data(self, field, datestart, dateend, zones=None, qi_threshold=0.1, 
                  query={"eo:cloud_cover": {"lt": 50}},
@@ -59,9 +60,9 @@ class Sentinel2(object):
             ds = xarray.Dataset()
             for idx, band in enumerate(t.band.values):
                 ds[band] = t.isel(band=idx).band_data
-            ds["LAI"] = t.lai
-            ds["FAPAR"] = t.fapar
-            ds["NDVI"] = t.ndvi
+            for idx in self.indices:
+                ds[idx] = t[idx]
+            
             ds.rio.to_raster(fname, tags = {"time": np.datetime_as_string(t.time, unit="s"),
                                             "field": t.name
                                             })
@@ -92,5 +93,10 @@ class Sentinel2(object):
     def compute_indices(self):
         self.data = biophys.run_snap_biophys(self.data, "LAI")
         self.data = biophys.run_snap_biophys(self.data, "FAPAR")
+        self.data = biophys.run_snap_biophys(self.data, "FCOVER")
+        self.data = biophys.run_snap_biophys(self.data, "LAI_Cab")
+        self.data = biophys.run_snap_biophys(self.data, "LAI_Cw")
         self.data = biophys.compute_ndvi(self.data)
         self.data = biophys.compute_ci_red_edge(self.data)
+        self.data = biophys.compute_gcc(self.data)
+        self.data = biophys.compute_evi(self.data)

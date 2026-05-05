@@ -12,3 +12,4 @@ build/**
 twinyields.egg-info
 rasters/*
 *.geojson
+.DS_Store

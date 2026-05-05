@@ -36,7 +36,7 @@ SNAP_BIO_RMSE = {
     "lai_cw": 0.03,
 }
 # path_to_s2tbx_biophysical
-snap_bio_path = os.path.join(os.path.dirname(__file__), "snap-auxdata/biophysical/2_1/")
+snap_bio_path = os.path.join(os.path.dirname(__file__), "snap-auxdata/biophysical/3_0/")
 nn_params = {}
 for var in ["FAPAR", "FCOVER", "LAI", "LAI_Cab", "LAI_Cw"]:
     norm_minmax = np.loadtxt(
@@ -61,38 +61,27 @@ for var in ["FAPAR", "FCOVER", "LAI", "LAI_Cab", "LAI_Cw"]:
         snap_bio_path + "%s/%s_ExtremeCases" % (var, var), delimiter=","
     )
 
-    if var == "FCOVER":
-        nn_params[var] = {
-            "norm_minmax": norm_minmax,
-            "denorm_minmax": denorm_minmax,
-            "layer1_weights": layer1_weights,
-            "layer1_bias": layer1_bias,
-            "layer2_weights": layer2_weights,
-            "layer2_bias": layer2_bias,
-            "extreme_cases": extreme_cases,
-        }
-    else:
-        defdom_min = np.loadtxt(
-            snap_bio_path + "%s/%s_DefinitionDomain_MinMax" % (var, var), delimiter=","
-        )[0, :].reshape(-1, 1)
-        defdom_max = np.loadtxt(
-            snap_bio_path + "%s/%s_DefinitionDomain_MinMax" % (var, var), delimiter=","
-        )[1, :].reshape(-1, 1)
-        defdom_grid = np.loadtxt(
-            snap_bio_path + "%s/%s_DefinitionDomain_Grid" % (var, var), delimiter=","
-        )
-        nn_params[var] = {
-            "norm_minmax": norm_minmax,
-            "denorm_minmax": denorm_minmax,
-            "layer1_weights": layer1_weights,
-            "layer1_bias": layer1_bias,
-            "layer2_weights": layer2_weights,
-            "layer2_bias": layer2_bias,
-            "defdom_min": defdom_min,
-            "defdom_max": defdom_max,
-            "defdom_grid": defdom_grid,
-            "extreme_cases": extreme_cases,
-        }
+    defdom_min = np.loadtxt(
+        snap_bio_path + "%s/%s_DefinitionDomain_MinMax" % (var, var), delimiter=","
+    )[0, :].reshape(-1, 1)
+    defdom_max = np.loadtxt(
+        snap_bio_path + "%s/%s_DefinitionDomain_MinMax" % (var, var), delimiter=","
+    )[1, :].reshape(-1, 1)
+    defdom_grid = np.loadtxt(
+        snap_bio_path + "%s/%s_DefinitionDomain_Grid" % (var, var), delimiter=","
+    )
+    nn_params[var] = {
+        "norm_minmax": norm_minmax,
+        "denorm_minmax": denorm_minmax,
+        "layer1_weights": layer1_weights,
+        "layer1_bias": layer1_bias,
+        "layer2_weights": layer2_weights,
+        "layer2_bias": layer2_bias,
+        "defdom_min": defdom_min,
+        "defdom_max": defdom_max,
+        "defdom_grid": defdom_grid,
+        "extreme_cases": extreme_cases,
+    }
 
 
 def _normalization(x, x_min, x_max):
@@ -123,8 +112,10 @@ def _input_ouf_of_range(x, variable):
     x_bands = x_copy[:8, :]
 
     # check min max domain
+    
     defdom_min = nn_params[variable]["defdom_min"][:, 0].reshape(-1, 1)
     defdom_max = nn_params[variable]["defdom_max"][:, 0].reshape(-1, 1)
+    
     bad_input_mask = (x_bands < defdom_min) | (x_bands > defdom_max)
     bad_vector = np.any(bad_input_mask, axis=0)
     x_bands[:, bad_vector] = np.nan
@@ -146,10 +137,10 @@ def _output_ouf_of_range(output, variable):
     output_min = nn_params[variable]["extreme_cases"][1]
     output_max = nn_params[variable]["extreme_cases"][2]
 
-    new_output[output < (output_min + tolerance)] = np.nan
+    #new_output[output < (output_min + tolerance)] = np.nan
     new_output[(output > (output_min + tolerance)) & (output < output_min)] = output_min
     new_output[(output < (output_max - tolerance)) & (output > output_max)] = output_max
-    new_output[output > (output_max - tolerance)] = np.nan
+    #new_output[output > (output_max - tolerance)] = np.nan
     return new_output
 
 
@@ -176,7 +167,7 @@ def _compute_variable(x, variable):
         nn_params[variable]["denorm_minmax"][0],
         nn_params[variable]["denorm_minmax"][1],
     )[0]
-    output = _output_ouf_of_range(output, variable)
+    #output = _output_ouf_of_range(output, variable)
     output = output.reshape(1, np.shape(x)[1])
     return output
 
@@ -213,6 +204,26 @@ def compute_ndvi(dataset):
     b8 = dataset.band_data.sel(band="B8A")
     ndvi = (b8 - b4) / (b8 + b4)
     return dataset.assign({"ndvi": ndvi})
+
+def compute_evi(dataset):
+    """Compute NDVI
+
+    Parameters
+    ----------
+    dataset : xarray dataset
+
+    Returns
+    -------
+    xarray dataset
+        Adds 'evi' xr array to xr dataset.
+    """
+    b2 = dataset.band_data.sel(band="B2")
+    b4 = dataset.band_data.sel(band="B4")
+    b8 = dataset.band_data.sel(band="B8A")
+
+    evi = 2.5 * (b8 - b4) / (b8 + 6 * b4 - 7.5 * b2 + 1)
+    return dataset.assign({"evi": evi})
+
 
 
 def compute_ci_red_edge(dataset):
