@@ -76,7 +76,7 @@ def get_xml_metadata(item):
     #with urllib.request.urlopen(item.assets["metadata"]["href"]) as url:
     with urllib.request.urlopen(item.assets["granule_metadata"].href) as url:
         metadata = xmltodict.parse(url.read().decode())
-    metadata = metadata.popitem(last=False)[1]
+    metadata = metadata.popitem()[1]
     return metadata
 
 
