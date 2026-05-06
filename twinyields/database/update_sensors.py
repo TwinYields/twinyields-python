@@ -99,8 +99,8 @@ class SoilScoutUpdater(object):
         since = since_time.strftime("%Y-%m-%dT%H:%M:%S")
         until = until_time.strftime("%Y-%m-%dT%H:%M:%S")
 
-        print("Updating from ", since, "until", until, 
-              "last_measurement", last_measurement.date)
+        print("Updating ", since, "-", until, 
+              ", last_measurement", last_measurement.date())
     
         measurements = sc.measurements(since=since, until=until, device=device)
         

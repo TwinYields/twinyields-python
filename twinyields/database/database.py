@@ -7,7 +7,9 @@ import pandas as pd
 import rasterio
 import datetime
 import tempfile
+import pyet
 from . import apsim
+import numpy as np
 
 class TwinDataBase(object):
 
@@ -76,10 +78,57 @@ class TwinDataBase(object):
         data = col.find(filter)
         return pd.DataFrame.from_records(data, exclude=["_id"])
 
-    def get_farmiaisti(self, device):
+    def get_farmiaisti(self, device, filter = {}):
         col = self.db.get_collection("Farmiaisti")
-        data = col.find({"device": device})
+        filter.update({"Device name" : device})
+        data = col.find(filter)
         return pd.DataFrame.from_records(data, exclude=["_id"])
+    
+    def get_daily_weather(self, starttime, endtime=None):
+        """Get daily weather by combining data from two weather stations"""
+        if endtime == None:
+            endtime = datetime.datetime.now()
+        timefilter = {"Time" : {"$gt" : starttime, "$lte" : endtime}}
+        d1 = self.get_farmiaisti("WS11-1", filter=timefilter)
+        d2 = self.get_farmiaisti("WS6-13", filter=timefilter)
+
+        d1["date"] = d1["Time"].dt.date
+        d1["Radiation"] = d1["Radiation (W/m²)"]*1.0E-6*900
+        daily1 = d1.groupby("date", as_index=False).agg(rad=("Radiation",  "sum"), 
+                    T = ("Temperature (°C)", "mean"),
+                    Tmin = ("Temperature (°C)", "min"),
+                    Tmax = ("Temperature (°C)", "max"),
+                    wind = ("Wind speed (m/s)", "mean"),
+                    vpa = ("Vapor pressure (kPa)", "mean"),
+                    hpa = ("Air-pressure (hPa)", "mean")
+                    )
+        d2["date"] = d2["Time"].dt.date
+        d2["rain"] = [float(r) if r is not None else 0.0 for r in d2["Daily rain (mm)"]]
+
+        daily2 = d2.groupby("date", as_index=False).agg(
+            RH = ("Humidity (%)", "mean"),
+            rain = ("rain", "max")
+        )
+        wdata = daily1.merge(daily2)
+        # Index needed for pyet
+        wdata = wdata.set_index(wdata["date"])
+        lat = 63*np.pi/180
+        
+        et = pyet.pm(
+               tmean = wdata["T"], 
+               lat = lat,
+               tmax=wdata["Tmax"], 
+               tmin=wdata["Tmin"], 
+               wind = wdata["wind"],
+               rs = wdata["rad"],
+               pressure=wdata["hpa"]/10, 
+               elevation=100,
+               rh=wdata["RH"])
+        wdata["et0"] = et.to_numpy()
+
+        return  wdata.reset_index(drop=True)
+        
+
 
     def get_metfile(self, weatherfile, device):
         data = self.get_farmiaisti(device)

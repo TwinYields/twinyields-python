@@ -29,10 +29,11 @@ class TwinUI(object):
         self.db = database.TwinDataBase()
 
 
-        self.today = datetime.fromisoformat("2022-07-20T00:00:00")
-        self.starttime = datetime.fromisoformat("2022-05-15T00:00:00")
-        #delta = timedelta(days=100)
-        #self.starttime = self.today - delta
+        #self.today = datetime.fromisoformat("2022-07-20T00:00:00")
+        #self.starttime = datetime.fromisoformat("2022-05-15T00:00:00")
+        self.today = datetime.now()
+        delta = timedelta(days=100)
+        self.starttime = self.today - delta
 
         print(self.starttime, self.today)
         self.timefilter = {"$gt" : self.starttime, "$lt" : self.today }
@@ -42,11 +43,13 @@ class TwinUI(object):
         # Read field polygon from database and add it to the basemap
         field = self.db["Fields"]
         data_field = pd.DataFrame(list(field.find()))
-        longitude, latitude = data_field["location"][0]["coordinates"]
+        #longitude, latitude = data_field["location"][0]["coordinates"]
+        latitude = 60.8042
+        longitude = 23.4861
 
         m = folium.Map(location=[latitude, longitude], zoom_start=15)
-        poly = data_field['geometry'][0]
-        folium.GeoJson(data=poly, style_function=lambda x: {'fillColor': 'blue'}).add_to(m)
+        #poly = data_field['geometry'][0]
+        #folium.GeoJson(data=poly, style_function=lambda x: {'fillColor': 'blue'}).add_to(m)
 
         # Add Soilscout positions to the map
         folium.Marker(
@@ -69,8 +72,8 @@ class TwinUI(object):
         ).add_to(m)
 
         #Read zone polygon from database and add to map
-        for z in data_field['zones'][0]:
-            folium.GeoJson(z["geometry"]).add_to(m)
+        #for z in data_field['zones'][0]:
+        #    folium.GeoJson(z["geometry"]).add_to(m)
 
         return m
 
@@ -81,25 +84,42 @@ class TwinUI(object):
         data = pd.DataFrame(list(col.find(
             filter={"timestamp": self.timefilter}).sort("timestamp", 1)))
 
-        mds = hv.Dataset(data, ["timestamp", "device"], ["moisture"])
-        mplot = mds.to(hv.Curve).overlay("device").opts(legend_position="bottom_left")
+        #mds = hv.Dataset(data, ["timestamp", "device"], ["moisture"])
+        #mplot = mds.to(hv.Curve).overlay("device").opts(legend_position="top", width="100%")
+        mplot = data.hvplot(x = 'timestamp', y='moisture', by='device',
+                xformatter=formatter).opts(xlabel = 'Time', ylabel = 'Soil moisture (%)', legend_position='top')
 
-        soilscout_plot = data.hvplot(x = 'timestamp', y='temperature', by='device',
-                xformatter=formatter).opts(xlabel = 'Time', ylabel = 'Temperature (C)', legend_position='top')
-        return soilscout_plot, mplot
+        tplot = data.hvplot(x = 'timestamp', y='temperature', by='device',
+                xformatter=formatter).opts(xlabel = 'Time', ylabel = 'Soil temperature (C)', legend_position='top')
+        #tds = hv.Dataset(data, ["timestamp", "device"], ["temperature"])
+        #tplot = tds.to(hv.Curve).overlay("device").opts(legend_position="top")
+
+        return tplot, mplot
 
     # Read weather station data from database and make plot to be used in Panel
     def farmiaisti(self):
-        col2 = self.db["Farmiaisti"]
-        data2 = pd.DataFrame(list(col2.find(filter={"time": self.timefilter}).sort("time", -1)))
+        wdata =  self.db.get_daily_weather(self.starttime, self.today)
 
+        # Nummela - no rain data
+        #dataN = pd.DataFrame(list(col2.find(filter={"Time": self.timefilter, "Device name" : {"$eq" : "WS11-1" }}).sort("time", -1)))
+        # Kuuma no radiation data
+        #dataK = pd.DataFrame(list(col2.find(filter={"Time": self.timefilter, "Device name" : {"$eq" : "WS6-13"}}).sort("time", -1)))
+
+        print(wdata.head())
         # Save current temperature in variable
-        data2_last = pd.DataFrame(list(col2.find().sort("time", -1).limit(1)))
-        tmp = str(data2_last[['temp_up']]).split()
-        last_weather = tmp[-1]
-        farmiaisti_plot = data2.hvplot('time','temp_up',
-            xformatter=formatter).opts(xlabel = 'Time',ylabel = 'Temperature (C)')
-        return farmiaisti_plot
+
+        #tmp = str(data2_last[['temp_up']]).split()
+        #last_weather = tmp[-1]
+        tplot = wdata.hvplot('date','T',
+            xformatter=formatter).opts(xlabel = 'date',ylabel = 'Temperature (C)')
+        rplot = wdata.hvplot.bar('date','rain',
+            xformatter=formatter).opts(xlabel = 'date', ylabel = 'Daily rain (mm)')
+        splot = wdata.hvplot('date', 'rad',
+            xformatter=formatter).opts(xlabel = 'date', ylabel = 'MJ')
+        etplot = wdata.hvplot('date', 'et0',
+            xformatter=formatter).opts(xlabel = 'date', ylabel = 'ET0')
+
+        return hv.Layout([tplot, rplot, splot, etplot])
 
     def simulation(self):
         simdata = self.db.get_simulation_data()
@@ -117,7 +137,6 @@ class TwinUI(object):
         #    xformatter=formatter).opts(legend_position='top', xlabel='Time',fontsize = {"legend" : 10}, title='Yield', legend_cols = 2)
         #p2 = data_zone.hvplot('ClockToday','WheatAboveGroundWt', by = "Zone",
         #    xformatter=formatter).opts(legend_position='top', xlabel='Time', fontsize = {"legend" : 10}, title='WheatAboveGroundWt')
-
         return p1, p2
 
     def s2_rasters(self):
@@ -189,43 +208,46 @@ class TwinUI(object):
         #Layout using Template
         bootstrap = pn.template.BootstrapTemplate(title='TwinYields')
 
-        rp1, rp2, rp3 = self.s2_rasters()
-        rp1.opts(width=500, height=400)
-        rp2.opts(width=500, height=400)
-        rp3.opts(width=500, height=400)
+        #rp1, rp2, rp3 = self.s2_rasters()
+        #rp1.opts(width=500, height=400)
+        #rp2.opts(width=500, height=400)
+        #rp3.opts(width=500, height=400)
 
-        rc1, rc2 = self.s2_curves()
-        rc1.opts(width=500, height=400)
-        rc2.opts(width=500, height=400)
+        #rc1, rc2 = self.s2_curves()
+        #rc1.opts(width=500, height=400)
+        #rc2.opts(width=500, height=400)
 
         m = self.basemap()
         folium_panel = pn.pane.plot.Folium(m, height=400, width=1000)
 
-        sp1, sp2 = self.simulation()
-        sp1.opts(width=500, height=400)
-        sp2.opts(width=500, height=400)
+        #sp1, sp2 = self.simulation()
+        #sp1.opts(width=500, height=400)
+        #sp2.opts(width=500, height=400)
 
         scT, sc_moisture  = self.soilscout()
-        sc_moisture.opts(width=500, height=400)
+        #sc_moisture.opts(width=500, height=400)
 
         fa = self.farmiaisti()
 
 
         print("\tSetting layout")
-        p1 = pn.Column(
-            pn.FlexBox(rp3, rp1, rp2, rc1, rc2, sc_moisture, flex_direction="row"),
-            sizing_mode='stretch_width', max_width=1600
-        )
+        #p1 = pn.Column(
+        #    pn.FlexBox(rp3, rp1, rp2, rc1, rc2, sc_moisture, flex_direction="row"),
+        #    sizing_mode='stretch_width', max_width=1600
+        #)
 
-        p2 = pn.Column(folium_panel,
-                       pn.FlexBox(sp1, sp2),
-                       sizing_mode='stretch_width')
+        #p2 = pn.Column(folium_panel,
+        #               pn.FlexBox(sp1, sp2),
+        #               sizing_mode='stretch_width')
 
-        p3 = pn.FlexBox(scT, fa)
+        #p3 = pn.FlexBox(scT, fa)
+        p3 = pn.FlexBox(hv.Layout([scT, sc_moisture, fa]).cols(2))
 
-        tabs = pn.Tabs(("Field Status", p1),
-                ("Simulation", p2),
+        tabs = pn.Tabs(
+                #("Field Status", p1),
+                #("Simulation", p2),
                 ("Sensors", p3),
+                ("Map", folium_panel),
                  dynamic = True)
         bootstrap.main.append(tabs)
         return bootstrap
