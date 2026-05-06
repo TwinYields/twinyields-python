@@ -16,7 +16,6 @@ pandas
 pymongo
 pyparsing
 pyproj
-python-dateutil==2.8.2
 pytz
 rasterio
 requests
@@ -29,3 +28,4 @@ tomli
 urllib3
 xarray
 xmltodict>=0.13.0
+pystac_client

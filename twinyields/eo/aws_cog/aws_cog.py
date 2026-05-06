@@ -10,7 +10,6 @@ geotiffs (https://registry.opendata.aws/sentinel-2-l2a-cogs/).
 Created on Fri Mar 12 15:47:31 2021
 """
 import sys
-import satsearch
 import rasterio
 import numpy as np
 import pandas as pd
