@@ -24,8 +24,7 @@ class SoilScoutUpdater(object):
         else:
             self.all_devices = devices
         
-
-        devices = [d for d in self.all_devices if d["last_seen"] is not None]
+        devices = [d for d in self.all_devices if d["last_seen"] is not None and d["device_type"] == "hydra"]
 
         # Only update devices that have been active this year
         if active:
@@ -60,18 +59,19 @@ class SoilScoutUpdater(object):
             first_request = False
             time.sleep(1) #Not sure if there are API limits
             attempt_count += 1
-            if attempt_count > 10:
+            if attempt_count > 20:
                 break
         print("Done!")
 
     # Updates max 180 days
     def _update_device(self, device, first_request = True):
+        device_info = [d for d in self.all_devices if d["id"] == device][0]
         try:
-            device_info = [d for d in self.all_devices if d["id"] == device][0]
             last_measurement = datetime.datetime.fromisoformat(
                 device_info["last_measurement"]["timestamp"].split("+")[0])
         except:
             print(f"No measurements for device {device}")
+            print(device_info)
             return 0
 
         last = list(self.collection.find({"device": device}).sort("timestamp", -1).limit(1))
@@ -100,7 +100,7 @@ class SoilScoutUpdater(object):
         until = until_time.strftime("%Y-%m-%dT%H:%M:%S")
 
         print("Updating from ", since, "until", until, 
-              "last_measurement", last_measurement)
+              "last_measurement", last_measurement.date)
     
         measurements = sc.measurements(since=since, until=until, device=device)
         
