@@ -128,7 +128,8 @@ class FarmiaistiUpdater(object):
             self.update_device(device)
 
     def update_device(self, device):
-        last = list(self.collection.find({"device": device["id_val"]}).sort("time", -1).limit(1))
+        last = list(self.collection.find({"device": device["id_val"]}).sort("Time", -1).limit(1))
+        #print(last, device)
         if not last:
             since_time = DEFAULT_STARTDATE
             print(f"No data for device {device['id_val']}, starting from", since_time)

@@ -159,6 +159,7 @@ class TwinDataBase(object):
         data_dict = df.to_dict(orient="records")
         if drop:
             self.db.drop_collection(col_name)
+        #print(data_dict[0])
         col = self.get_collection(col_name)
         col.insert_many(data_dict)
 
