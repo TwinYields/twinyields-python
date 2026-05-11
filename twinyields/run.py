@@ -9,6 +9,7 @@ import argparse
 import os
 from . import operations
 import shutil
+import geopandas as gpd
 
 """
 This class takes care of running and initializing Digital Twin
@@ -18,34 +19,18 @@ class DigitalTwin(object):
 
     def __init__(self):
         self.db = database.TwinDataBase()
-        self.twinconsole = os.path.join(Config.Simulation.path, "TwinConsole/TwinConsole")
-        self.sim_updater = database.SimulationUpdater()
+        #self.sim_updater = database.SimulationUpdater()
 
     def init(self):
         os.makedirs(Config.Simulation.path, exist_ok=True)
         os.makedirs(Config.Simulation.path + "/prototypes", exist_ok=True)
-        protos = glob.glob(os.path.dirname(__file__) + "/resources/*.apsimx")
-        for p in protos:
-            shutil.copy(p, Config.Simulation.path + "/prototypes/" + os.path.basename(p))
 
         self.db.drop_collection("Farms")
-        self.db.drop_collection("Fields")
+        self.db.drop_collection("Parcels")
         self.db["Farms"].insert_one({"name": "Jokioinen SmartFarm"})
 
-        # Init from sowing tasks
-        tasks = glob.glob(os.path.join(Config.Simulation.path + "tasks/sowing/*"))
-        print("Found tasks:", tasks)
-        print("Processing task data")
-        for task in tasks:
-            tfile = f"{task}/TASKDATA.XML"
-            s = operations.Sowing(tfile)
-            self.db.save_field(s.field, s.fieldname, s.products, s.zones)
-        subprocess.run([self.twinconsole, "init"], cwd=Config.Simulation.path)
-        # Get historical weather data for site
-        print("Getting historical weather from Nasa Power")
-        ns = database.NasaPowerUpdater()
-        ns.update_history()
-        print("Done! You can run the model using twinyields -r")
+        parcels = gpd.read_parquet(Config.Simulation.path + "parcels.parquet")
+        self.db.save_geo_dataframe(parcels, "Parcels", drop=True)       
 
     def update_sensors(self):
         su = database.SoilScoutUpdater()
