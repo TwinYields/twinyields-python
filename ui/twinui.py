@@ -79,6 +79,8 @@ class TwinUI(object):
 
     # Read Soilscout data from database and make plot to be used in Panel
     def soilscout(self):
+        
+
         col = self.db["SoilScout"]
 
         data = pd.DataFrame(list(col.find(
@@ -90,7 +92,11 @@ class TwinUI(object):
                 xformatter=formatter).opts(xlabel = 'Time', ylabel = 'Soil moisture (%)', legend_position='top')
 
         tplot = data.hvplot(x = 'timestamp', y='temperature', by='device',
-                xformatter=formatter).opts(xlabel = 'Time', ylabel = 'Soil temperature (C)', legend_position='top')
+                xformatter=formatter).opts(xlabel = 'Time', 
+                                           ylabel = 'Soil temperature (C)', 
+                                           legend_position='top',
+                                           ylim=(-10, 25)
+                                           )
         #tds = hv.Dataset(data, ["timestamp", "device"], ["temperature"])
         #tplot = tds.to(hv.Curve).overlay("device").opts(legend_position="top")
 

@@ -61,6 +61,11 @@ class TwinDataBase(object):
         else:
             q = self.db[collection].find(filter)
         return pd.DataFrame.from_records(list(q), exclude=["_id"])
+    
+    def find(self, col, filter = {}, projection={"_id" : False}):
+        c = self.db.get_collection(col)
+        return list(c.find(filter, projection=projection))
+
 
     def get_s2(self, filter={}):
         return self._find_df("Sentinel2", filter)
@@ -129,7 +134,6 @@ class TwinDataBase(object):
         return  wdata.reset_index(drop=True)
         
 
-
     def get_metfile(self, weatherfile, device):
         data = self.get_farmiaisti(device)
         #Filter out partial days
@@ -162,6 +166,31 @@ class TwinDataBase(object):
         #print(data_dict[0])
         col = self.get_collection(col_name)
         col.insert_many(data_dict)
+
+    def read_geo_dataframe(self, col, filter={}):
+        ldata = self.find(col, filter)
+        fc = dict(type="FeatureCollection", 
+          features = [{"geometry" : d["geometry"], 
+                       "id" : f"{id}", "properties" : {}} for id,d in enumerate(ldata)])
+        geo = gpd.GeoDataFrame.from_features(fc)
+        return gpd.GeoDataFrame(ldata, 
+                         geometry=geo["geometry"], crs="epsg:4326")
+
+ 
+    def save_geo_dataframe(self, gdf, col_name, drop=False):
+        if drop:
+            self.db.drop_collection(col_name)
+        col = self.get_collection(col_name)
+        datacols = [col for col in gdf.columns if col != "geometry"]
+        # Format to MongoDB geometries
+        geoms = [f["geometry"] for f in  gdf.to_geo_dict()["features"]]
+        pdata = gdf[datacols]
+        pdata["geometry"] = geoms
+        
+        data_dict = pdata.to_dict(orient="records")
+
+        col.insert_many(data_dict)
+
 
     """Save raster file to database"""
     def save_raster(self, rfile, col_name):
