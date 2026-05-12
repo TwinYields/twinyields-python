@@ -10,3 +10,4 @@ version = "0.1.0"
 [dependencies]
 python = "3.10.*"
 pip = ">=26.0.1,<27"
+polars = ">=1.40.0,<2"

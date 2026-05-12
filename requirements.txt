@@ -29,3 +29,6 @@ urllib3
 xarray
 xmltodict>=0.13.0
 pystac_client
+polars
+polars-h3
+pymongoarrow
