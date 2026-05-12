@@ -16,7 +16,12 @@ from pymongoarrow import api as pmapi
 
 class EOUpdater(object):
 
-    def __init__(self):
+    def __init__(self, year = None):
+        if year == None:
+            self.year = datetime.datetime.now().year
+        else:
+            self.year = year
+
         self.db = TwinDataBase()
         self.collection = self.db.get_collection("S2Biophys")
         
@@ -98,11 +103,11 @@ class EOUpdater(object):
             fname = out_path /  (f"{parcel}_{tds.time.values}".split(".")[0].replace(":", "") + ".nc")
             tds.to_netcdf(fname)
 
-    def update_field(self, parcel=None, year=None):
+    def update_field(self, parcel=None):
         parcel_name = parcel["name"].iloc[0]
         last = list(self.collection.find({"parcel": parcel_name}).sort("timestamp", -1).limit(1))
-        if year is None:
-            year = datetime.datetime.now().year
+
+        year = self.year
 
         if not last or last[0]["time"].year != year:
             startdate = datetime.date(year, 5, 1)
@@ -111,7 +116,7 @@ class EOUpdater(object):
             startdate = (last[0]["time"] + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
             #print("Updating S2 data, starting from", startdate)
         
-        edate = max(datetime.datetime.now().date(), datetime.date(year, 9, 30))
+        edate = min(datetime.datetime.now().date(), datetime.date(year, 9, 30))
         enddate = edate.strftime("%Y-%m-%d")
 
         print(f"Updating {parcel_name}: {startdate} - {enddate}")

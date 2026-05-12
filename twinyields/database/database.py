@@ -11,6 +11,7 @@ import pyet
 #from . import apsim
 import numpy as np
 from ..config import Config
+import xarray as xr
 
 class TwinDataBase(object):
 
@@ -30,13 +31,12 @@ class TwinDataBase(object):
 
     def create_collections(self):
         # Create time series collections
-        if self.config.DataBase == "mongo":
-            self.db.db.create_collection("SoilScout", 
+        if self.config.DataBase.db == "mongo":
+            self.db.create_collection("SoilScout", 
                     timeseries={"timeField": "timestamp", "metaField" : "device"})
-            self.db.db.create_collection("S2Biophys",
+            self.db.create_collection("S2Biophys",
                         timeseries={"timeField": "timestamp", "metaField" : "band"})
             
-
     def __getitem__(self, item):
         return self.db[item]
     
@@ -211,76 +211,13 @@ class TwinDataBase(object):
 
         col.insert_many(data_dict)
 
-
-    """Save raster file to database"""
-    def save_raster(self, rfile, col_name):
-        data = open(rfile, "rb").read()
-        r = rasterio.open(rfile)
-        tags = r.tags()
-        doc = {"raster": data, "field" : tags["field"],
-            "time": datetime.datetime.strptime(tags["time"], "%Y-%m-%dT%H:%M:%S"),
-            "path": rfile
-        }
-        col = self.db.get_collection(col_name)
-        col.insert_one(doc)
-
-    def save_field(self, field, fieldname, products, zones):
-        farm = self.db["Farms"].find_one()
-        fdf = field.copy()
-        fdf["location"] = fdf.centroid
-        ft = fdf.iloc[[0]].__geo_interface__["features"][0]
-        p = ft["properties"]
-        loc = gpd.GeoSeries(p["location"]).__geo_interface__["features"][0]["geometry"]
-        field = {"farmid": farm["_id"], "name": fieldname,
-                 "location": loc, "geometry": ft["geometry"]}
-        gdf = zones.copy()
-        gdf = gdf.to_crs("epsg:4326")
-        gdf["location"] = gdf.centroid
-        zones = []
-        prods = [products[k] for k in sorted(products.keys())]
-        for idx in range(gdf.shape[0]):
-            ft = gdf.iloc[[idx]].__geo_interface__["features"][0]
-            p = ft["properties"]
-            loc = gpd.GeoSeries(p["location"]).__geo_interface__["features"][0]["geometry"]
-            zone = {"name": f"zone{p['zone']}", "location": loc, "geometry": ft["geometry"],
-                    "rates": p["grp"], "products": prods
-                    }
-            zones.append(zone)
-        field["zones"] = zones
-        self.db["Fields"].insert_one(field)
-
-    """Get Sentinel2 rasters for a field, use limit=1 to get only most recent
-    """
-    def get_s2_raster(self, field, limit=100):
-        col = self.db.get_collection("Sentinel2Rasters")
-        docs = col.find({"field": field}).sort("time", -1).limit(limit)
-        rasters = []
-        #There seem to be some issues with MemoryFile (occasional crashes) at least on Windows
-        for doc in docs:
-            with rasterio.MemoryFile(doc["raster"]) as raster:
-                with raster.open() as r:
-                    ds = rioxarray.open_rasterio(r, cache=True)
-                    ds["time"] = doc["time"]
-                    rasters.append(ds.copy(deep=True))
-        return rasters
+    def read_biophys_dataset(self, parcel, year):
+        return xr.open_mfdataset(
+                self.config.Simulation.path + f"eodata/biophys/{parcel}_{year}*.nc", 
+                concat_dim="time", combine="nested")
 
 
-    """Get specific Sentinel2 bands for a field, use limit=1 to get only most recent"""
-    def get_s2_band(self, field, band, limit=100):
-        col = self.db.get_collection("Sentinel2Rasters")
-        docs = col.find({"field": field}).sort("time", -1).limit(limit)
-        bounds = []
-        rasters = []
-        times = []
-        for doc in docs:
-            rfile = rasterio.MemoryFile(doc["raster"])
-            r = rfile.open()
-            idx = r.indexes[r.descriptions.index(band)]
-            rasters.append(r.read(idx))
-            bounds.append(r.bounds)
-            times.append(doc["time"])
-            r.close()
-        return rasters, bounds, times
+
 
 
 
