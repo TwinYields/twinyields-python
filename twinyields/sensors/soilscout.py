@@ -2,6 +2,7 @@ import json
 import requests
 import pandas as pd
 import datetime
+import itertools
 from ..config import Config
 
 class SoilScoutAPI(object):
@@ -36,6 +37,12 @@ class SoilScoutAPI(object):
         response_data = []
         url = self.base_url + "/measurements/"
         next = url
+
+        if type(since) == datetime.datetime:
+            since = since.strftime("%Y-%m-%dT%H:%M:%S")
+        if type(until) == datetime.datetime:
+            until = until.strftime("%Y-%m-%dT%H:%M:%S")
+
         params = {'since' : since, 'until' : until}
         if device is not None:
             params['device'] = device
@@ -56,7 +63,8 @@ class SoilScoutAPI(object):
             print(".", end = "")
             next = response["next"]
         print()
-        return response_data
+
+        return list(itertools.chain.from_iterable(response_data))
 
     def date_hook(self, json_dict):
         for (key, value) in json_dict.items():

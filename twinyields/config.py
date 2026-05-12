@@ -21,8 +21,15 @@ class Farmiaisti:
     password: str = None
     devices: list = dataclasses.field(default_factory=list)
 
+@dataclass
+class Database:
+    db: str = "mongo"
+    table: str = "TwinYields"
+    user: str = None
+    password: str = None
+
 class Config(object):
-    database = "TwinYields"
+
     config = {}
     Simulation = Simulation()
     SoilScout = SoilScout()
@@ -38,5 +45,7 @@ class Config(object):
             Config.SoilScout = SoilScout(**cfg["SoilScout"])
         if "Farmiaisti" in cfg:
             Config.Farmiaisti = Farmiaisti(**cfg["Farmiaisti"])
+        if "database" in cfg:
+            Config.DataBase = Database(**cfg["database"])
 
 _cfg = Config()

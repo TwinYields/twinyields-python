@@ -8,18 +8,38 @@ import rasterio
 import datetime
 import tempfile
 import pyet
-from . import apsim
+#from . import apsim
 import numpy as np
+from ..config import Config
 
 class TwinDataBase(object):
 
     def __init__(self):
-        client = pymongo.MongoClient()
-        self.db = client.get_database("TwinYields")
+        self.config = Config()
+
+        if self.config.DataBase.db == "documentdb":
+            user = self.config.DataBase.user
+            passwd = self.config.DataBase.password
+            uri = f"mongodb://{user}:{passwd}@localhost:10260/?tls=true&tlsAllowInvalidCertificates=true"
+            client = pymongo.MongoClient(uri, fsync=True, w=1)
+        else:
+            client = pymongo.MongoClient(fsync=True, w=1)
+        
+        self.db = client.get_database(self.config.DataBase.table)
+
+
+    def create_collections(self):
+        # Create time series collections
+        if self.config.DataBase == "mongo":
+            self.db.db.create_collection("SoilScout", 
+                    timeseries={"timeField": "timestamp", "metaField" : "device"})
+            self.db.db.create_collection("S2Biophys",
+                        timeseries={"timeField": "timestamp", "metaField" : "band"})
+            
 
     def __getitem__(self, item):
         return self.db[item]
-
+    
     def get_collection(self, col):
         return self.db.get_collection(col)
 

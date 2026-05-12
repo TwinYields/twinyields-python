@@ -12,6 +12,7 @@ import polars_h3 as plh3
 import polars as pl
 from pyproj import Transformer
 import pymongoarrow as pma
+from pymongoarrow import api as pmapi
 
 class EOUpdater(object):
 
@@ -73,6 +74,7 @@ class EOUpdater(object):
             coords = sdf.select(plh3.cell_to_latlng("h3cell"))
             locations = [{"type" : "Point", "coordinates" :  c} for c in coords["h3cell"].to_list()]
             sdf = sdf.with_columns(geometry = pl.Series(locations))
+            sdf = sdf.rename({"time" : "timestamp"})
             dfs.append(sdf)
         return pl.concat(dfs)
     
@@ -80,7 +82,7 @@ class EOUpdater(object):
         for par in self.biopars:
             df = self.ds_to_h3(ds, par)
             df = df.with_columns(parcel = pl.lit(parcel) )
-            count = pma.api.write(self.collection, df)
+            count = pmapi.write(self.collection, df)
             print(parcel, par, count)
 
     def save_daily_dataset(self, ds, type, parcel):
@@ -98,7 +100,7 @@ class EOUpdater(object):
 
     def update_field(self, parcel=None, year=None):
         parcel_name = parcel["name"].iloc[0]
-        last = list(self.collection.find({"parcel": parcel_name}).sort("time", -1).limit(1))
+        last = list(self.collection.find({"parcel": parcel_name}).sort("timestamp", -1).limit(1))
         if year is None:
             year = datetime.datetime.now().year
 

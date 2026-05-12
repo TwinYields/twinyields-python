@@ -3,6 +3,7 @@ from ..sensors import SoilScoutAPI
 from ..config import Config
 import datetime
 import time
+import pandas as pd
 from .database import TwinDataBase
 try:
     from farmiaisti import Farmiaisti
@@ -15,10 +16,10 @@ DEFAULT_STARTDATE = datetime.datetime(2020, 4, 1)
 class SoilScoutUpdater(object):
 
     def __init__(self, devices = None, active = True):
-        self.client = pymongo.MongoClient()
-        self.db = self.client.get_database(Config.database)
+        self.db = TwinDataBase()
         self.collection = self.db.get_collection("SoilScout")
         sc = SoilScoutAPI()
+        
         if devices is None:
             self.all_devices = sc.devices()
         else:
@@ -66,6 +67,7 @@ class SoilScoutUpdater(object):
     # Updates max 180 days
     def _update_device(self, device, first_request = True):
         device_info = [d for d in self.all_devices if d["id"] == device][0]
+        
         try:
             last_measurement = datetime.datetime.fromisoformat(
                 device_info["last_measurement"]["timestamp"].split("+")[0])
@@ -89,7 +91,6 @@ class SoilScoutUpdater(object):
         else:
             since_time = self._since_time
 
-
         sc = SoilScoutAPI()
         #Ask at most 180 days at a time, API seems to error otherwise
         year_dt = since_time + self.max_dates
@@ -103,10 +104,20 @@ class SoilScoutUpdater(object):
               ", last_measurement", last_measurement.date())
     
         measurements = sc.measurements(since=since, until=until, device=device)
-        
-        if measurements[0]:
-            for m in measurements:
-                self.collection.insert_many(m)
+
+        if measurements:
+            for i in range(len(measurements)):
+                # Add metadata
+                measurements[i]["geometry"] = {"type" : "Point", 
+                        "coordinates" : (device_info["location"]["latitude"], device_info["location"]["longitude"])
+                      }
+                measurements[i]["name"] = device_info["name"].replace(" ", "")
+
+            result = self.collection.insert_many(measurements)
+            insert_count = len(result.inserted_ids)
+            self._since_time = pd.DataFrame(measurements)["timestamp"].max() + datetime.timedelta(hours=1)
+            
+            print(f"Inserted {insert_count} measurements")
             return (now-until_time).total_seconds()
         elif (last_measurement - until_time).days > 0:
             self._since_time = self._since_time + self.max_dates

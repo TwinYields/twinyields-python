@@ -19,7 +19,7 @@ class DigitalTwin(object):
 
     def __init__(self):
         self.db = database.TwinDataBase()
-        #self.sim_updater = database.SimulationUpdater()
+        self.config = Config()
 
     def init(self):
         os.makedirs(Config.Simulation.path, exist_ok=True)
@@ -29,8 +29,15 @@ class DigitalTwin(object):
         self.db.drop_collection("Parcels")
         self.db["Farms"].insert_one({"name": "Jokioinen SmartFarm"})
 
+        try:
+            self.db.create_collections()
+        except:
+            print("Error in creating ts collections, do they already exist?")
+
         parcels = gpd.read_parquet(Config.Simulation.path + "parcels.parquet")
-        self.db.save_geo_dataframe(parcels, "Parcels", drop=True)       
+        N = parcels.shape[0]
+        self.db.save_geo_dataframe(parcels, "Parcels", drop=True)
+        print(f"DigitalTwin initialized with {N} parcels")
 
     def update_sensors(self):
         su = database.SoilScoutUpdater()
