@@ -113,7 +113,7 @@ class EOUpdater(object):
             startdate = datetime.date(year, 5, 1)
             #print("No S2 data, starting from", startdate)
         else:
-            startdate = (last[0]["time"] + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+            startdate = (last[0]["timestamp"] + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
             #print("Updating S2 data, starting from", startdate)
         
         edate = min(datetime.datetime.now().date(), datetime.date(year, 9, 30))
