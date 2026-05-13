@@ -41,7 +41,7 @@ class EOUpdater(object):
 
     def download_s2(self, parcel, start_date, end_date):
         self.client = eo.S2CDSE(parcel)
-        self.client.get_data(start_date, end_date)
+        self.client.get_data(start_date, end_date, grid_code="MGRS-34VFN")
         return self.client.data
     
     def compute_biophys(self, ds):
